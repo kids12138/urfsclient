@@ -212,12 +212,13 @@ pub fn parse_xattr_value(data: &[u8], size: usize, name: &OsStr) -> Result<Optio
 /// Valid prefixes of extended attributes
 ///
 /// Please keep in consistence with `RAFSV6_XATTR_TYPES`.
-pub const RAFS_XATTR_PREFIXES: [&str; 5] = [
+pub const RAFS_XATTR_PREFIXES: [&str; 6] = [
     "user.",
     "security.",
     "trusted.",
     "system.posix_acl_access",
     "system.posix_acl_default",
+    "com.apple.",
 ];
 
 /// Rafs inode extended attributes.
@@ -255,13 +256,12 @@ impl RafsXAttrs {
 
     /// Add or update an extended attribute.
     pub fn add(&mut self, name: OsString, value: XattrValue) -> Result<()> {
-        //println!("!!!add xattr!!! {:?} {:?}", name, value);
         let buf = name.as_bytes();
         if buf.len() > 255 || value.len() > 0x10000 {
             return Err(einval!("xattr key/value is too big"));
         }
         for p in RAFS_XATTR_PREFIXES {
-            if buf.len() > p.as_bytes().len() && &buf[..p.as_bytes().len()] == p.as_bytes() {
+            if buf.len() >= p.as_bytes().len() && &buf[..p.as_bytes().len()] == p.as_bytes() {
                 self.pairs.insert(name, value);
                 return Ok(());
             }

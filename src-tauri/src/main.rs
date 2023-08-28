@@ -1,26 +1,42 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+//=========== dataset_image_cmd.rs ===========
+// #![deny(warnings)]
+#[macro_use(crate_authors)]
+extern crate clap;
+#[macro_use]
+extern crate anyhow;
+#[macro_use]
+extern crate log;
 #[macro_use]
 extern crate serde_json;
 #[macro_use]
-extern crate anyhow;
-//can log to file with using info!(),error!(),debug!(),trace!(),warn!()
+extern crate lazy_static;
+
 #[macro_use]
-extern crate log;
+mod trace;
+mod builder;
+mod core;
+mod inspect;
+mod merge;
+mod stat;
+mod unpack;
+mod validator;
+//=========== dataset_image_cmd.rs ===========
+
+mod dataset_image_cmd;
+mod dataset_backend;
+mod dataset_backend_type;
 
 use tauri_plugin_log::LogTarget;
 use log::LevelFilter;
 use fern::colors::ColoredLevelConfig;
 use tokio::sync::{mpsc,oneshot};
 
-mod inspect;
-mod upload_backend;
-mod upload_backend_type;
-
-use crate::upload_backend::DatasetManager;
-use crate::upload_backend_type::UiError;
-use crate::upload_backend_type::UiResponse;
+use crate::dataset_backend::DatasetManager;
+use crate::dataset_backend_type::UiError;
+use crate::dataset_backend_type::UiResponse;
 
 #[tauri::command]
 async fn start_upload(dataset_cmd_sender: tauri::State<'_,mpsc::Sender<(String,String,oneshot::Sender<UiResponse>)>>,req: String) -> Result<String,UiError> {
@@ -116,3 +132,4 @@ async fn main() {
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
+
