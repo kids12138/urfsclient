@@ -34,7 +34,7 @@ async function star_upload(source:string) {
             dataset_version_id: 'default',
             dataset_cache_dir: appCacheDirPath,
             dataset_source: source,
-            server_endpoint: 'http://0.0.0.0:65004'
+            server_endpoint: 'http://192.168.23.29:65004'
         })})
 
         message.success('正在上传');
