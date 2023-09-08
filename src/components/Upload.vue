@@ -31,14 +31,13 @@ async function star_upload(source: string) {
   try {
     await invoke("start_upload", {
       req: JSON.stringify({
-        dataset_id: "xxx",
-        dataset_version_id: "default",
+        dataset_id: 'xxx',
+        dataset_version_id: 'default',
         dataset_cache_dir: appCacheDirPath,
         dataset_source: source,
-        server_endpoint: "http://0.0.0.0:65004",
-      }),
-    });
-
+        server_endpoint: 'http://192.168.23.29:65004'
+      })
+    })
     message.success("正在上传");
   } catch (err: any) {
     message.error("上传出错：", err);
@@ -93,11 +92,7 @@ async function get_history() {
     <!-- <button type="button" @click="get_history()">历史任务</button> -->
   </div>
 
-  <a-list
-    class="demo-upload-list"
-    item-layout="horizontal"
-    :data-source="uploadItemList"
-  >
+  <a-list class="demo-upload-list" item-layout="horizontal" :data-source="uploadItemList">
     <template #renderItem="{ item }">
       <a-list-item>
         <template #actions>
@@ -112,10 +107,14 @@ async function get_history() {
             </template>
             <template #avatar>
               <a-avatar size="small" v-if="item.isDir === false">
-                <template #icon><FileOutlined /></template>
+                <template #icon>
+                  <FileOutlined />
+                </template>
               </a-avatar>
               <a-avatar size="small" v-if="item.isDir === true">
-                <template #icon><FolderOutlined /></template>
+                <template #icon>
+                  <FolderOutlined />
+                </template>
               </a-avatar>
             </template>
           </a-list-item-meta>
@@ -129,4 +128,14 @@ async function get_history() {
   margin-top: 40px;
   text-align: center;
 }
-</style>
+
+:deep(.ant-list-item-meta-content) {
+  width: 200px!important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+:deep(.ant-list-item-action) {
+  margin-left: 0px!important
+}</style>

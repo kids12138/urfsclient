@@ -446,10 +446,14 @@ async fn start_upload(all_dataset_sema: Arc<Semaphore>, dataset_status_sender: m
         result = start_dataset_uploader(all_dataset_sema.clone(), dataset_status_sender.clone(),uploader_shutdown_cmd_suber,uploader_shutdown_cmd_rx,req.clone()).await;
         
         if result.is_err() {
+            warn!("[DatasetChunksManager]: send DataSetStatus Failed to [DatasetManager], Err result:{:?},  dataset_id:{:?}, dataset_version_id:{:?}", 
+            result, req.dataset_id.clone(), req.dataset_version_id.clone());
             dataset_status = DataSetStatus::Failed;
             dataset_status_sender.send((req.dataset_id.clone(),req.dataset_version_id.clone(),dataset_status)).await?;
         }
     }else{
+        warn!("[DatasetChunksManager]: send DataSetStatus Failed to [DatasetManager], Err result:{:?},  dataset_id:{:?}, dataset_version_id:{:?}", 
+        result, req.dataset_id.clone(), req.dataset_version_id.clone());
         dataset_status = DataSetStatus::Failed;
         dataset_status_sender.send((req.dataset_id.clone(),req.dataset_version_id.clone(),dataset_status)).await?;
     }

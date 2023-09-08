@@ -87,7 +87,7 @@ const router = useRouter();
   background-size: 100% 100%;
   height: 100vh;
   background-repeat: no-repeat;
-  min-width: 1800px;
+  min-width: 1200px;
 }
 :deep(.ant-form-item-required) {
   color: #fff !important;
