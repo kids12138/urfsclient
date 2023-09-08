@@ -64,7 +64,7 @@ import operateDialg from "../components/OperateDatasetDialg.vue";
 import upload from "../components/Upload.vue";
 const open2 = ref<boolean>(false);
 const open3 = ref<boolean>(false);
-const activeKey = ref("2");
+const activeKey = ref("1");
 const show = ref(false);
 watch(activeKey, (val) => {
   if (val === "2") {
