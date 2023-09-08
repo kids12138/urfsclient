@@ -8,18 +8,21 @@
     <template #bodyCell="{ column, record }">
       <template v-if="column.key === 'progress'">
         <a>
-          <a-progress
-            :stroke-color="{
-              '0%': '#108ee9',
-              '100%': '#87d068',
-            }"
-            :percent="99.9"
-          />
+          <a-progress :stroke-color="{
+            '0%': '#108ee9',
+            '100%': '#87d068',
+          }" :percent="99.9" />
         </a>
       </template>
       <template v-else-if="column.key === 'operate'">
-        <span @click="showDeleteConfirm()">
+        <span @click="showDeleteConfirm()" class="m-l">
           <a>删除</a>
+        </span>
+        <span @click="stop_upload()" class="m-l">
+          <a>暂停</a>
+        </span>
+        <span @click="showDeleteConfirm()" class="m-l">
+          <a>终止</a>
         </span>
       </template>
     </template>
@@ -27,21 +30,31 @@
 </template>
 <script lang="ts" setup>
 import { Modal } from "ant-design-vue";
+import { invoke } from "@tauri-apps/api/tauri";
+import { message } from "ant-design-vue";
+import { info, error } from "tauri-plugin-log-api";
+import { onMounted } from 'vue'
+onMounted(() => {
+  get_history()
+})
 const columns = [
   {
     name: "名称",
     dataIndex: "name",
     key: "name",
+    width: "150px"
   },
   {
     title: "大小",
     dataIndex: "size",
     key: "size",
+    width: "150px"
   },
   {
     title: "进度",
     dataIndex: "progress",
     key: "progress",
+    width: "300px"
   },
   {
     title: "操作",
@@ -85,4 +98,48 @@ const showDeleteConfirm = () => {
     },
   });
 };
+
+async function stop_upload() {
+  try {
+    await invoke("stop_upload", {
+      req: JSON.stringify({
+        dataset_id: "xxx",
+        dataset_version_id: "default",
+      }),
+    });
+    message.success("暂停上传成功");
+  } catch (err: any) {
+    message.error("暂停上传出错：", err);
+    error(`暂停上传出错: ${err}`);
+  }
+}
+
+async function terminate_upload() {
+  try {
+    await invoke("terminate_upload", {
+      req: JSON.stringify({
+        dataset_id: "xxx",
+        dataset_version_id: "default",
+      }),
+    });
+    message.success("终止上传成功");
+  } catch (err: any) {
+    message.error("终止上传出错：", err);
+    error(`终止上传出错: ${err}`);
+  }
+}
+async function get_history() {
+  try {
+    info("[ui] click get_history btn");
+    await invoke("get_history", { req: JSON.stringify({ req: "{}" }) });
+    message.success("获取文件上传历史成功");
+  } catch (err: any) {
+    message.error("终止上传错误：", err);
+  }
+}
 </script>
+<style scoped>
+.m-l {
+  margin-right: 20px;
+}
+</style>

@@ -3,8 +3,8 @@
     <a-row justify="center">
       <a-col :span="10">
         <a-row>
-          <a-col :span="12"></a-col>
-          <a-col :span="12">
+          <a-col :span="8"></a-col>
+          <a-col :span="16">
             <a-form
               :model="formState"
               name="basic"

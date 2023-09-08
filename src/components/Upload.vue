@@ -44,46 +44,6 @@ async function star_upload(source: string) {
     error(`上传出错: ${err}`);
   }
 }
-
-async function stop_upload() {
-  try {
-    await invoke("stop_upload", {
-      req: JSON.stringify({
-        dataset_id: "xxx",
-        dataset_version_id: "default",
-      }),
-    });
-    message.success("暂停上传成功");
-  } catch (err: any) {
-    message.error("暂停上传出错：", err);
-    error(`暂停上传出错: ${err}`);
-  }
-}
-
-async function terminate_upload() {
-  try {
-    await invoke("terminate_upload", {
-      req: JSON.stringify({
-        dataset_id: "xxx",
-        dataset_version_id: "default",
-      }),
-    });
-    message.success("终止上传成功");
-  } catch (err: any) {
-    message.error("终止上传出错：", err);
-    error(`终止上传出错: ${err}`);
-  }
-}
-
-async function get_history() {
-  try {
-    info("[ui] click get_history btn");
-    await invoke("get_history", { req: JSON.stringify({ req: "{}" }) });
-    message.success("获取文件上传历史成功");
-  } catch (err: any) {
-    message.error("终止上传错误：", err);
-  }
-}
 </script>
 
 <template>
@@ -97,8 +57,6 @@ async function get_history() {
       <a-list-item>
         <template #actions>
           <a key="star_upload" @click="star_upload(item.name)">开始上传</a>
-          <a key="stop_upload" @click="stop_upload()">暂停上传</a>
-          <a key="terminate_upload" @click="terminate_upload()">终止上传</a>
         </template>
         <div>
           <a-list-item-meta description="">
