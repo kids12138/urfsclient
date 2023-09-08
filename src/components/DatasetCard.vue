@@ -37,12 +37,15 @@
 import { reactive, ref, watch, onMounted } from "vue";
 import { useStore } from "vuex";
 import { useRouter } from "vue-router";
+import ReqGY from "../api/dataSet.js";
 const router = useRouter();
 const store = useStore();
 const show = ref<boolean>(false);
 onMounted(() => {
   if (store.state.dataType === "persional") {
     show.value = false;
+    ReqGY.getDatasetList().then(res=>{
+    })
   } else {
     show.value = true;
   }
