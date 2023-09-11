@@ -129,7 +129,7 @@ async function get_history() {
   try {
     info("[ui] click get_history btn");
     let data=await invoke("get_history", { req: JSON.stringify({ req: "{}" }) });
-    console.log(data)
+    console.log(data["payload_json"],"TEST")
     message.success("获取文件上传历史成功");
   } catch (err: any) {
     message.error("终止上传错误：", err);

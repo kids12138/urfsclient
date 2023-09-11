@@ -11,7 +11,9 @@
           </a-row>
           <a-row>
             <a-col :span="12">副本个数:{{formState.replica}}</a-col>
-            <a-col :span="12">{{formState.tags}}</a-col>
+            <a-col :span="12"> <a-tag v-for="tag in formState.tags" :key="tag" :color="getLabel(tag).color">
+              {{ getLabel(tag).content }}
+            </a-tag></a-col>
           </a-row>
         </a-col>
         <a-col :span="12"><a-space warp>
@@ -58,6 +60,7 @@ import { useStore } from "vuex";
 import { http } from "@tauri-apps/api";
 import { message } from "ant-design-vue";
 import baseURL from "../BASEURL"
+import  getLabel from "../util/index"
 const store = useStore();
 const open2 = ref<boolean>(false);
 const open3 = ref<boolean>(false);
@@ -67,14 +70,14 @@ const id = ref<string>("")
 interface FormState {
   name: string;
   desc: string;
-  tags: ['其他'];
+  tags: [];
   replica: number;
   id: string
 }
 const formState: UnwrapRef<FormState> = reactive({
   name: "",
   desc: "",
-  tags: ["其他"],
+  tags: [],
   replica: 0,
   id: ""
 });
@@ -244,7 +247,7 @@ async function getDetail(id: String){
       formState.name = res.data.dataset.name
       formState.id = res.data.dataset.id
       formState.desc = res.data.dataset.desc
-      formState.tags = res.data.dataset.tags
+      formState.tags=JSON.parse(res.data.dataset.tags)
       formState.replica = res.data.dataset.replica
     }
 

@@ -32,7 +32,7 @@ use crate::dataset_backend_type::UiStartUploadDatasetRequest;
 use crate::dataset_backend_type::UiStopUploadDatasetRequest;
 use crate::dataset_backend_type::UiTerminateUploadDatasetRequest;
 
-#[derive(Debug,Clone)]
+#[derive(Debug,Clone,Serialize, Deserialize)]
 pub enum DataSetStatus{
     Wait,//wait
     Init,//init dataset image
@@ -446,14 +446,10 @@ async fn start_upload(all_dataset_sema: Arc<Semaphore>, dataset_status_sender: m
         result = start_dataset_uploader(all_dataset_sema.clone(), dataset_status_sender.clone(),uploader_shutdown_cmd_suber,uploader_shutdown_cmd_rx,req.clone()).await;
         
         if result.is_err() {
-            warn!("[DatasetChunksManager]: send DataSetStatus Failed to [DatasetManager], Err result:{:?},  dataset_id:{:?}, dataset_version_id:{:?}", 
-            result, req.dataset_id.clone(), req.dataset_version_id.clone());
             dataset_status = DataSetStatus::Failed;
             dataset_status_sender.send((req.dataset_id.clone(),req.dataset_version_id.clone(),dataset_status)).await?;
         }
     }else{
-        warn!("[DatasetChunksManager]: send DataSetStatus Failed to [DatasetManager], Err result:{:?},  dataset_id:{:?}, dataset_version_id:{:?}", 
-        result, req.dataset_id.clone(), req.dataset_version_id.clone());
         dataset_status = DataSetStatus::Failed;
         dataset_status_sender.send((req.dataset_id.clone(),req.dataset_version_id.clone(),dataset_status)).await?;
     }
@@ -572,7 +568,7 @@ impl DatasetManager {
                                         debug!("[DatasetManager]: start_upload req:{:?}, result: {:?},",req,result);
                                     });
 
-                                    let resp = UiResponse{status_code: 0, status_msg:"".to_string()};
+                                    let resp = UiResponse{status_code: 0, status_msg:"".to_string(),payload_json:"".to_string()};
 
                                     debug!("[DatasetManager]: ui_cmd_collector cmd: {:?},resp:{:?}",cmd,resp);
 
@@ -583,7 +579,7 @@ impl DatasetManager {
                                 },
                                 std::result::Result::Err(e)=> {
 
-                                    let resp = UiResponse{status_code: -1, status_msg: e.to_string()};
+                                    let resp = UiResponse{status_code: -1, status_msg: e.to_string(),payload_json:"".to_string()};
 
                                     if resp_sender.send(resp).is_err(){
                                             //Do not need process next step, here is Err-Topest-Process Layer!
@@ -600,7 +596,7 @@ impl DatasetManager {
                             match result {
                                 std::result::Result::Ok(_) => {
 
-                                   let resp = UiResponse{status_code: 0, status_msg:"".to_string()};
+                                   let resp = UiResponse{status_code: 0, status_msg:"".to_string(),payload_json:"".to_string()};
 
                                    if resp_sender.send(resp).is_err(){
                                         //Do not need process next step, here is Err-Topest-Process Layer!
@@ -609,7 +605,7 @@ impl DatasetManager {
                                 },
                                 std::result::Result::Err(e)=> {
 
-                                   let resp = UiResponse{status_code: -1, status_msg: e.to_string()};
+                                   let resp = UiResponse{status_code: -1, status_msg: e.to_string(),payload_json:"".to_string()};
 
                                    if resp_sender.send(resp).is_err(){
                                         //Do not need process next step, here is Err-Topest-Process Layer!
@@ -628,7 +624,7 @@ impl DatasetManager {
                                     match result_history {
                                         std::result::Result::Ok(_) => {
 
-                                            let resp = UiResponse{status_code: 0, status_msg:"".to_string()};
+                                            let resp = UiResponse{status_code: 0, status_msg:"".to_string(),payload_json:"".to_string()};
 
                                             if resp_sender.send(resp).is_err(){
                                                     //Do not need process next step, here is Err-Topest-Process Layer!
@@ -637,7 +633,7 @@ impl DatasetManager {
                                         },
                                         std::result::Result::Err(e)=> {
 
-                                            let resp = UiResponse{status_code: -1, status_msg: e.to_string()};
+                                            let resp = UiResponse{status_code: -1, status_msg: e.to_string(),payload_json:"".to_string()};
 
                                             if resp_sender.send(resp).is_err(){
                                                     //Do not need process next step, here is Err-Topest-Process Layer!
@@ -648,7 +644,7 @@ impl DatasetManager {
                                 },
                                 std::result::Result::Err(e)=> {
 
-                                   let resp = UiResponse{status_code: -1, status_msg: e.to_string()};
+                                   let resp = UiResponse{status_code: -1, status_msg: e.to_string(),payload_json:"".to_string()};
                                    if resp_sender.send(resp).is_err(){
                                         //Do not need process next step, here is Err-Topest-Process Layer!
                                         error!("[DatasetManager]: can not handle this err, just log!!! ui {} cmd resp channel err", cmd);
@@ -660,19 +656,35 @@ impl DatasetManager {
                         "get_history" => {
                             debug!("[DatasetManager]: ui_cmd_collector received cmd: {}, request: {:?}",cmd,req_json);
 
-                            self.get_history();
+                            let upload_history_map = self.get_history();
 
-                            let resp = UiResponse{status_code: 0, status_msg:"".to_string()};
+                            let upload_history_json_result = serde_json::to_string(&upload_history_map);
 
-                            if resp_sender.send(resp).is_err() {
-                                //Do not need process next step, here is Err-Topest-Process Layer!
-                                error!("[DatasetManager]: can not handle this err, just log!!! ui {} cmd resp channel err", cmd);
+                            match upload_history_json_result {
+                                std::result::Result::Ok(upload_history_json) => {
+                                    
+                                    let resp = UiResponse{status_code: 0, status_msg:"".to_string(),payload_json: upload_history_json};
+
+                                    if resp_sender.send(resp).is_err() {
+                                        //Do not need process next step, here is Err-Topest-Process Layer!
+                                        error!("[DatasetManager]: can not handle this err, just log!!! ui {} cmd resp channel err", cmd);
+                                    }
+                                },
+                                std::result::Result::Err(e)=> {
+
+                                    let resp = UiResponse{status_code: -1, status_msg: e.to_string(),payload_json:"".to_string()};
+
+                                    if resp_sender.send(resp).is_err(){
+                                            //Do not need process next step, here is Err-Topest-Process Layer!
+                                            error!("[DatasetManager]: can not handle this err, just log!!! ui {} cmd resp channel err", cmd);
+                                    }
+                                }
                             }
                         },
                         _ => {
                             error!("[DatasetManager]: ui_cmd_collector received unknow cmd: {}, request: {:?}",cmd,req_json);
 
-                            let resp = UiResponse{status_code: -1, status_msg: format!("unknown cmd:{}",cmd)};
+                            let resp = UiResponse{status_code: -1, status_msg: format!("unknown cmd:{}",cmd),payload_json:"".to_string()};
 
                             if resp_sender.send(resp).is_err() {
                                 //Do not need process next step, here is Err-Topest-Process Layer!
@@ -719,8 +731,9 @@ impl DatasetManager {
         self.dataset_uploader_shutdown_cmd_senders.insert(format!("{}:{}",dataset_id,dataset_version_id),shutdown_cmd_sender);
     }
 
-    fn get_history(&self) {
+    fn get_history(&self) -> HashMap<String, DataSetStatus> {
        debug!("get_history:{:?}",self.upload_dataset_history); 
+       self.upload_dataset_history.clone()
     }
 
 

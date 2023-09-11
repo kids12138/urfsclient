@@ -44,8 +44,9 @@
           <a-tag color="grey" class="tagClass">文本分类</a-tag>
           <a-tag color="cyan" class="tagClass">目标检测</a-tag>
           <a-tag color="blue" class="tagClass">目标跟踪</a-tag>
-          <a-tag color="purple" class="tagClass">语义分割</a-tag>
-          <a-tag color="yellow" class="tagClass">音频分类</a-tag>
+          <a-tag color="yellow" class="tagClass">语义分割</a-tag>
+          <a-tag color="purple" class="tagClass">音频分类</a-tag>
+          <a-tag color="green" class="tagClass">其他</a-tag>
         </div>
       </a-layout-sider>
       <a-layout-content :style="contentStyle">

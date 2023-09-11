@@ -13,8 +13,8 @@
         </template>
         <template v-else-if="column.key === 'tags'">
           <span>
-            <a-tag v-for="tag in record.tags" :key="tag" :color="tag.color">
-              {{ tag.content }}
+            <a-tag v-for="tag in record.tags" :key="tag" :color="getLabel(tag).color">
+              {{ getLabel(tag).content }}
             </a-tag>
           </span>
         </template>
@@ -38,6 +38,7 @@ import { useStore } from "vuex";
 import { useRouter } from "vue-router";
 import { http } from "@tauri-apps/api";
 import baseURL from "../BASEURL"
+import  getLabel from "../util/index"
 const router = useRouter();
 const store = useStore();
 const type = ref(false);
@@ -142,7 +143,7 @@ async function getList() {
     method: 'GET',
   }).then(res => {
     res.data.datasets.forEach((item: any) => {
-      data.push({ id: item.id, name: item.name, replica: item.replica, desc: item.desc, tags: [{ color: 'green', content: '其他' }] })
+      data.push({ id: item.id, name: item.name, replica: item.replica, desc: item.desc, tags: JSON.parse(item.tags) })
     })
 
   });

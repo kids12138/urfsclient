@@ -3,7 +3,7 @@
     <a-row :gutter="16">
       <a-col :span="8" v-for="(item, index) in cardList" :key="index">
         <a-card :title="item.name" :bordered="false" class="cardStyle" @click="showDetail(item.id)">
-          <a-tag v-for="(Item, index) in item.tags" :key="index" :color="Item.color">{{ Item.content }}</a-tag>
+          <a-tag v-for="(Item, index) in item.tags" :key="index" :color="getLabel(Item).color" class="tagClass">{{ getLabel(Item).content}}</a-tag>
           <p class="mt-1">{{ item.desc }}</p>
           <p>
             <!-- <span class="m-1">{{ item.updateTime }}</span
@@ -23,6 +23,7 @@ import { reactive, ref, watch, onMounted } from "vue";
 import { useStore } from "vuex";
 import { http } from "@tauri-apps/api";
 import baseURL from "../BASEURL"
+import  getLabel from "../util/index"
 const store = useStore();
 const show = ref<boolean>(false);
 onMounted(() => {
@@ -53,14 +54,10 @@ watch(
 interface cardType {
   name: string;
   desc: string;
-  tags: label[];
+  tags: [];
   id: string;
   replica: Number;
 
-}
-interface label {
-  color: string;
-  content: string;
 }
 const cardList: cardType[] = reactive([]);
 const current = ref(1);
@@ -76,7 +73,7 @@ async function getList() {
     method: 'GET',
   }).then(res => {
     res.data.datasets.forEach((item: any) => {
-      cardList.push({ id: item.id, name: item.name, replica: item.replica, desc: item.desc, tags: [{ color: 'green', content: '其他' }] })
+      cardList.push({ id: item.id, name: item.name, replica: item.replica, desc: item.desc, tags: JSON.parse(item.tags) })
     })
 
   });
@@ -115,4 +112,5 @@ async function getList() {
 :deep(.ant-pagination) {
   text-align: right;
 }
+.tagClass{margin-bottom: 10px;}
 </style>

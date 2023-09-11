@@ -9,8 +9,8 @@
           <a-textarea v-model:value="formState.desc" />
         </a-form-item>
         <a-form-item label="标签类型" name="type">
-          <a-select v-model:value="formState.tags" mode="tags" style="width: 100%" :options="options"
-            @change="handleChange()"></a-select>
+          <a-select v-model:value="formState.tags" mode="multiple" :showSearch=false style="width: 100%"
+            :options="options" @change="handleChange()"></a-select>
         </a-form-item>
         <a-form-item label="副本数">
           <a-form-item name="copy" no-style>
@@ -43,7 +43,7 @@ onMounted(() => {
 interface FormState {
   name: string;
   desc: string;
-  tags: ['其他'];
+  tags: [];
   replica: number;
 }
 const props = defineProps({
@@ -72,7 +72,7 @@ const wrapperCol = { span: 10 };
 const formState: UnwrapRef<FormState> = reactive({
   name: "",
   desc: "",
-  tags: ["其他"],
+  tags: [],
   replica: 0,
 });
 const rules: Record<string, Rule[]> = {
@@ -85,38 +85,40 @@ const rules: Record<string, Rule[]> = {
   ],
 };
 async function createDataset() {
-  await http.fetch(baseURL+'/api/v1/dataset', {
+  console.log(formState.tags)
+  await http.fetch(baseURL + '/api/v1/dataset', {
     method: 'POST',
-    body: http.Body.form({ name: formState.name, desc: formState.desc, tags: "其他", replica: formState.replica.toString() })
+    body: http.Body.form({ name: formState.name, desc: formState.desc, tags: JSON.stringify(formState.tags), replica: formState.replica.toString() })
   }).then(res => {
-    if (res.data.status_msg == "succeed") { message.success("创建数据集成功");store.commit("changedataSetNumber");reqclick();}
+    if (res.data.status_msg == "succeed") { message.success("创建数据集成功"); store.commit("changedataSetNumber"); reqclick(); }
     else { message.warning("创建数据集失败") }
 
   });
 }
-async function editeDataset(id: String){
-  await http.fetch(baseURL+'/api/v1/dataset/' + id, {
+async function editeDataset(id: String) {
+  await http.fetch(baseURL + '/api/v1/dataset/' + id, {
     method: 'PATCH',
-    body: http.Body.form({ name: formState.name, desc: formState.desc, tags: "其他", replica: formState.replica.toString() })
+    body: http.Body.form({ name: formState.name, desc: formState.desc, tags: JSON.stringify(formState.tags), replica: formState.replica.toString() })
   }).then(res => {
     if (res.data.status_msg == "succeed") {
       message.success("编辑数据集成功");
       store.commit("changedataSetNumber");
       reqclick();
-     
+
     }
     else { message.warning("编辑数据集失败") }
 
   });
 }
-async function getDetail(id: String){
-  await  http.fetch(baseURL+'/api/v1/dataset/' + id, {
+async function getDetail(id: String) {
+  await http.fetch(baseURL + '/api/v1/dataset/' + id, {
     method: 'GET',
   }).then(res => {
+    console.log(res)
     formState.name = res.data.dataset.name
     formState.desc = res.data.dataset.desc
     formState.replica = res.data.dataset.replica
-    formState.tags = ["其他"]
+    formState.tags=JSON.parse(res.data.dataset.tags)
 
 
   });
@@ -140,7 +142,15 @@ const resetForm = () => {
   formRef.value.resetFields();
 };
 const options = [
-  { label: "其他", value: "green" },
+  { label: "中文分词", value: "中文分词" },
+  { label: "图像分类", value: "图像分类" },
+  { label: "数据增强", value: "数据增强" },
+  { label: "文本分类", value: "文本分类" },
+  { label: "目标检测", value: "目标检测" },
+  { label: "目标跟踪", value: "目标跟踪" },
+  { label: "语义分割", value: "语义分割" },
+  { label: "音频分类", value: "音频分类" },
+  { label: "其他", value: "其他" },
 ];
 const handleChange = () => { };
 </script>
