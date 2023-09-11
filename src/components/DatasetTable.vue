@@ -7,7 +7,7 @@
     >
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'name'">
-          <a @click="showDetail()">
+          <a @click="showDetail(record.id)">
             {{ record.name }}
           </a>
         </template>
@@ -36,14 +36,18 @@ import DetailDialg from "./DetailDialog.vue";
 import { reactive, ref, computed, watch, onMounted } from "vue";
 import { useStore } from "vuex";
 import { useRouter } from "vue-router";
+import { http } from "@tauri-apps/api";
+import baseURL from "../BASEURL"
 const router = useRouter();
 const store = useStore();
 const type = ref(false);
 onMounted(() => {
   if (store.state.dataType === "persional") {
     type.value = false;
+    getList()
   } else {
     type.value = true;
+    getList()
   }
 });
 watch(
@@ -55,6 +59,12 @@ watch(
       type.value = true;
     }
   }
+);
+watch(
+  () => store.state.dataSetNumber,
+  (val) => {
+   getList()
+  },
 );
 const columns1 = [
   {
@@ -90,7 +100,7 @@ const columns2 = [
     key: "name",
   },
   {
-    title: "Tags",
+    title: "标签",
     key: "tags",
     dataIndex: "tags",
   },
@@ -99,55 +109,44 @@ const columns2 = [
     dataIndex: "desc",
     key: "desc",
   },
-  {
-    title: "更新时间",
-    dataIndex: "updateTime",
-    key: "updateTime",
-  },
+  // {
+  //   title: "更新时间",
+  //   dataIndex: "updateTime",
+  //   key: "updateTime",
+  // },
 ];
-const data = [
-  {
-    key: "1",
-    name: "文件一",
-    tags: [
-      { color: "pink", content: "中文分词" },
-      { color: "red", content: "图像分类" },
-    ],
-    desc: "这是一段描述",
-    updateTime: "2023-9-4",
-    author: "xxx",
-  },
-  {
-    key: "2",
-    name: "文件二",
-    tags: [
-      { color: "pink", content: "中文分词" },
-      { color: "red", content: "图像分类" },
-    ],
-    desc: "这是一段描述",
-    updateTime: "2023-9-4",
-    author: "xxx",
-  },
-  {
-    key: "3",
-    name: "文件三",
-    tags: [
-      { color: "pink", content: "中文分词" },
-      { color: "red", content: "图像分类" },
-    ],
-    desc: "这是一段描述",
-    updateTime: "2023-9-4",
-    author: "xxx",
-  },
-];
-const showDetail = () => {
+interface dataType {
+  name: string;
+  desc: string;
+  tags: label[];
+  id: string;
+  replica: Number;
+
+}
+interface label {
+  color: string;
+  content: string;
+}
+const data: dataType[] = reactive([]);
+const showDetail = (id:String) => {
   store.commit("changeDataPage", "detail");
+  store.commit("changeDatasetId", id);
 };
 
 const current = ref(1);
 const handleTableChange = (e: any) => {
   console.log(e);
 };
+async function getList() {
+  await http.fetch(baseURL + '/api/v1/datasets', {
+    method: 'GET',
+  }).then(res => {
+    res.data.datasets.forEach((item: any) => {
+      data.push({ id: item.id, name: item.name, replica: item.replica, desc: item.desc, tags: [{ color: 'green', content: '其他' }] })
+    })
+
+  });
+}
 </script>
 <style scoped>
 .bg {

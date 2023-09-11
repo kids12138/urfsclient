@@ -32,7 +32,7 @@
             <div class="buttonGroup">
               <a-radio-group v-model:value="datasetType" button-style="solid" @change="handleChange()">
                 <a-radio-button value="persional">个人数据集</a-radio-button>
-                <a-radio-button value="community">公共数据集</a-radio-button>
+                <a-radio-button value="community" disabled>公共数据集</a-radio-button>
               </a-radio-group>
             </div>
           </a-col>
@@ -41,7 +41,7 @@
           <a-tag color="pink" class="tagClass">中文分词</a-tag>
           <a-tag color="red" class="tagClass">图像分类</a-tag>
           <a-tag color="orange" class="tagClass">数据增强</a-tag>
-          <a-tag color="green" class="tagClass">文本分类</a-tag>
+          <a-tag color="grey" class="tagClass">文本分类</a-tag>
           <a-tag color="cyan" class="tagClass">目标检测</a-tag>
           <a-tag color="blue" class="tagClass">目标跟踪</a-tag>
           <a-tag color="purple" class="tagClass">语义分割</a-tag>

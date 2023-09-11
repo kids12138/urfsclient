@@ -1,20 +1,7 @@
 <template>
   <div>
-    <a-modal
-      v-model:open="open"
-      :title="title"
-      @ok="handleOk"
-      @cancel="handleCancel"
-      :centered="true"
-      width="800px"
-    >
-      <a-form
-        ref="formRef"
-        :model="formState"
-        :rules="rules"
-        :label-col="labelCol"
-        :wrapper-col="wrapperCol"
-      >
+    <a-modal v-model:open="open" :title="title" @ok="handleOk" @cancel="handleCancel" :centered="true" width="800px">
+      <a-form ref="formRef" :model="formState" :rules="rules" :label-col="labelCol" :wrapper-col="wrapperCol">
         <a-form-item ref="name" label="数据集名称" name="name">
           <a-input v-model:value="formState.name" />
         </a-form-item>
@@ -22,42 +9,42 @@
           <a-textarea v-model:value="formState.desc" />
         </a-form-item>
         <a-form-item label="标签类型" name="type">
-          <a-select
-            v-model:value="formState.type"
-            mode="tags"
-            style="width: 100%"
-            :options="options"
-            @change="handleChange()"
-          ></a-select>
+          <a-select v-model:value="formState.tags" mode="tags" style="width: 100%" :options="options"
+            @change="handleChange()"></a-select>
         </a-form-item>
         <a-form-item label="副本数">
           <a-form-item name="copy" no-style>
-            <a-input-number
-              v-model:value="formState['input-number']"
-              :min="1"
-              :max="10"
-            />
+            <a-input-number v-model:value="formState['replica']" :min="1" :max="10" />
           </a-form-item>
           <span class="ant-form-text">
-            <a-alert message="副本数最小为0" type="warning" show-icon
-          /></span>
+            <a-alert message="副本数最小为0" type="warning" show-icon /></span>
         </a-form-item>
       </a-form>
     </a-modal>
   </div>
 </template>
 <script lang="ts" setup>
-import { Dayjs } from "dayjs";
-import { reactive, ref, toRaw } from "vue";
+import { useStore } from "vuex";
+import { reactive, ref, toRaw, onMounted } from "vue";
 import type { UnwrapRef } from "vue";
 import type { Rule } from "ant-design-vue/es/form";
 import { message } from "ant-design-vue";
 import { ArrowUpOutlined, ArrowDownOutlined } from "@ant-design/icons-vue";
+import { http } from "@tauri-apps/api";
+import baseURL from "../BASEURL"
+const id = ref<string>("")
+const store = useStore();
+onMounted(() => {
+  if (props.title == "编辑数据集") {
+    id.value = store.state.dataSetId
+    getDetail(id.value)
+  }
+});
 interface FormState {
   name: string;
   desc: string;
-  type: [];
-  copy: number;
+  tags: ['其他'];
+  replica: number;
 }
 const props = defineProps({
   title: {
@@ -65,7 +52,6 @@ const props = defineProps({
     type: String,
   },
 });
-
 const open = ref<boolean>(true);
 const handleOk = (e: MouseEvent) => {
   onSubmit();
@@ -78,7 +64,7 @@ const emit = defineEmits<{
 }>();
 //const emit = defineEmits(['chilFun']) // 自定义chilFun事件
 const reqclick = () => {
-  emit("closeDatasetDialg", false); //1212:传个父组件的数据
+  emit("closeDatasetDialg", false); //:传个父组件的数据
 };
 const formRef = ref();
 const labelCol = { span: 5 };
@@ -86,8 +72,8 @@ const wrapperCol = { span: 10 };
 const formState: UnwrapRef<FormState> = reactive({
   name: "",
   desc: "",
-  type: [],
-  copy: 0,
+  tags: ["其他"],
+  replica: 0,
 });
 const rules: Record<string, Rule[]> = {
   name: [
@@ -98,12 +84,53 @@ const rules: Record<string, Rule[]> = {
     },
   ],
 };
+async function createDataset() {
+  await http.fetch(baseURL+'/api/v1/dataset', {
+    method: 'POST',
+    body: http.Body.form({ name: formState.name, desc: formState.desc, tags: "其他", replica: formState.replica.toString() })
+  }).then(res => {
+    if (res.data.status_msg == "succeed") { message.success("创建数据集成功");store.commit("changedataSetNumber");reqclick();}
+    else { message.warning("创建数据集失败") }
+
+  });
+}
+async function editeDataset(id: String){
+  await http.fetch(baseURL+'/api/v1/dataset/' + id, {
+    method: 'PATCH',
+    body: http.Body.form({ name: formState.name, desc: formState.desc, tags: "其他", replica: formState.replica.toString() })
+  }).then(res => {
+    if (res.data.status_msg == "succeed") {
+      message.success("编辑数据集成功");
+      store.commit("changedataSetNumber");
+      reqclick();
+     
+    }
+    else { message.warning("编辑数据集失败") }
+
+  });
+}
+async function getDetail(id: String){
+  await  http.fetch(baseURL+'/api/v1/dataset/' + id, {
+    method: 'GET',
+  }).then(res => {
+    formState.name = res.data.dataset.name
+    formState.desc = res.data.dataset.desc
+    formState.replica = res.data.dataset.replica
+    formState.tags = ["其他"]
+
+
+  });
+}
 const onSubmit = () => {
   formRef.value
     .validate()
     .then(() => {
-      reqclick();
-      message.success("创建数据集成功");
+      if (props.title === "创建数据集") {
+        createDataset()
+      }
+      else { editeDataset(id.value) }
+
+
     })
     .catch((error: any) => {
       console.log("error", error);
@@ -113,17 +140,16 @@ const resetForm = () => {
   formRef.value.resetFields();
 };
 const options = [
-  { label: "111", value: 111 },
-  { label: "222", value: 222 },
+  { label: "其他", value: "green" },
 ];
-const handleChange = () => {};
+const handleChange = () => { };
 </script>
 <style scoped>
-:deep(.ant-alert-warning){
+:deep(.ant-alert-warning) {
   background-color: #fff;
   border: 0px;
   height: 20px;
   position: relative;
-  top:5px
+  top: 5px
 }
 </style>

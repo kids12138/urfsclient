@@ -15,13 +15,10 @@
         </a>
       </template>
       <template v-else-if="column.key === 'operate'">
-        <span @click="showDeleteConfirm()" class="m-l">
-          <a>删除</a>
-        </span>
         <span @click="stop_upload()" class="m-l">
-          <a>暂停</a>
+          <a @click="stop_upload()">暂停</a>
         </span>
-        <span @click="showDeleteConfirm()" class="m-l">
+        <span @click="terminate_upload()" class="m-l">
           <a>终止</a>
         </span>
       </template>
@@ -131,7 +128,8 @@ async function terminate_upload() {
 async function get_history() {
   try {
     info("[ui] click get_history btn");
-    await invoke("get_history", { req: JSON.stringify({ req: "{}" }) });
+    let data=await invoke("get_history", { req: JSON.stringify({ req: "{}" }) });
+    console.log(data)
     message.success("获取文件上传历史成功");
   } catch (err: any) {
     message.error("终止上传错误：", err);

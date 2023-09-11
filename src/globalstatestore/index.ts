@@ -7,7 +7,9 @@ export default createStore({
     lang: 'zh_CN',
     loading: false,
     dataType: "persional",
-    dataPage:"list"
+    dataPage:"list",
+    dataSetId:"",
+    dataSetNumber:true
   },
   getters: {
     //以state为原料，加工返回一个新的state
@@ -28,6 +30,12 @@ export default createStore({
     },
     changeDataPage(state: any, data: string) {
       state.dataPage = data
+    },
+    changeDatasetId(state: any, data: string) {
+      state.dataSetId = data
+    },
+    changedataSetNumber(state: any) {
+      state.dataSetNumber = !state.dataSetNumber
     },
   },
   actions: {
