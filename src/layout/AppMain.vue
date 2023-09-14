@@ -25,7 +25,7 @@
                 <template #overlay>
                   <a-menu @click="handleMenuClick">
                     <a-menu-item key="1"> 创建数据集 </a-menu-item>
-                    <a-menu-item key="2"> 系统设置 </a-menu-item>
+                    <a-menu-item key="2" disabled> 系统设置 </a-menu-item>
                     <a-menu-item key="3"> 退出 </a-menu-item>
                   </a-menu>
                 </template>

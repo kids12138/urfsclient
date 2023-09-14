@@ -3,25 +3,25 @@
     <p>
       <a-row justify="space-between">
         <a-col :span="12"> <a-row>
-            <a-col :span="24">数据集ID:{{formState.id}}</a-col>
+            <a-col :span="24">数据集ID:{{ formState.id }}</a-col>
           </a-row>
           <a-row>
-            <a-col :span="12">数据集名称:{{formState.name}}</a-col>
-            <a-col :span="12">数据集描述:{{formState.desc}}</a-col>
+            <a-col :span="12">数据集名称:{{ formState.name }}</a-col>
+            <a-col :span="12">数据集描述:{{ formState.desc }}</a-col>
           </a-row>
           <a-row>
-            <a-col :span="12">副本个数:{{formState.replica}}</a-col>
+            <a-col :span="12">副本个数:{{ formState.replica }}</a-col>
             <a-col :span="12"> <a-tag v-for="tag in formState.tags" :key="tag" :color="getLabel(tag).color">
-              {{ getLabel(tag).content }}
-            </a-tag></a-col>
+                {{ getLabel(tag).content }}
+              </a-tag></a-col>
           </a-row>
         </a-col>
         <a-col :span="12"><a-space warp>
             <a-button type="primary" @click="showUpload" v-if="show">上传</a-button>
-            <a-button type="primary" @click="shareConfirm">分享</a-button>
+            <a-button type="primary" @click="shareConfirm" disabled>分享</a-button>
             <a-button type="primary" @click="showDeleteConfirm">删除</a-button>
             <a-button type="primary" @click="edite">编辑</a-button>
-            <a-button type="primary" v-if="show">下载</a-button>
+            <a-button type="primary" v-if="show" disabled>下载</a-button>
           </a-space></a-col>
       </a-row>
     </p>
@@ -57,10 +57,10 @@ import { Modal } from "ant-design-vue";
 import operateDialg from "../components/OperateDatasetDialg.vue";
 import upload from "../components/Upload.vue";
 import { useStore } from "vuex";
-import { http } from "@tauri-apps/api";
 import { message } from "ant-design-vue";
-import baseURL from "../BASEURL"
-import  getLabel from "../util/index"
+import baseurl from "../util/baseURL"
+import { http } from "@tauri-apps/api";
+import getLabel from "../util/index"
 const store = useStore();
 const open2 = ref<boolean>(false);
 const open3 = ref<boolean>(false);
@@ -84,6 +84,7 @@ const formState: UnwrapRef<FormState> = reactive({
 onMounted(() => {
   id.value = store.state.dataSetId
   getDetail(id.value)
+  getVersion()
 });
 watch(activeKey, (val) => {
   if (val === "2") {
@@ -105,14 +106,17 @@ const handleCancel = (e: MouseEvent) => {
   emit("closeDetailDialg", false);
 };
 const hideModal = (e: MouseEvent) => {
-  open2.value = false;
+  open3.value = false;
 };
-const options = ref<SelectProps["options"]>([
-  { value: "V1", label: "V1" },
-  { value: "V2", label: "V2" },
-  { value: "V3", label: "V3" },
-]);
-const handleChange = () => { };
+interface optionType {
+  label: string;
+  value: string
+
+}
+const options: optionType[] = reactive([{ value: "default", label: "默认" }]);
+const handleChange = () => {
+  store.commit("changeDataSetVersion", value);
+};
 const handleBlur = () => {
   console.log("blur");
 };
@@ -129,7 +133,7 @@ const closeDatasetDialg = (val: boolean) => {
 const showUpload = () => {
   open3.value = true;
 };
-const value = ref("V1");
+const value = ref("默认");
 const desc = ref("这是一段描述");
 const use = ref("这是一段使用方法");
 const columns = [
@@ -239,31 +243,45 @@ const shareConfirm = () => {
     class: "test",
   });
 };
-async function getDetail(id: String){
-  await  http.fetch(baseURL+'/api/v1/dataset/' + id, {
+async function getDetail(id: String) {
+  const res = await http.fetch(baseurl + '/api/v1/dataset/' + id, {
     method: 'GET',
-  }).then(res => {
-    if (res.data.status_msg == "succeed") {
-      formState.name = res.data.dataset.name
-      formState.id = res.data.dataset.id
-      formState.desc = res.data.dataset.desc
-      formState.tags=JSON.parse(res.data.dataset.tags)
-      formState.replica = res.data.dataset.replica
-    }
-
-
-  });
+    timeout: 6000
+  })
+  if (res.data.status_msg === "succeed") {
+    formState.name = res.data.dataset.name
+    formState.id = res.data.dataset.id
+    formState.desc = res.data.dataset.desc
+    formState.tags = res.data.dataset.tags
+    formState.replica = res.data.dataset.replica
+  }
 }
-async function deleteDataset(id: String){
-  await http.fetch(baseURL+'/api/v1/dataset/' + id, {
-    method: 'DELETE',
-  }).then(res => {
-    if (res.data.status_msg == "succeed") {
-      message.success("删除数据集成功");
-      store.commit("changedataSetNumber");
-      store.commit("changeDataPage", "list");
+async function getVersion() {
+  const res = await http.fetch(baseurl + '/api/v1/dataset/' + id + "/versions", {
+    method: 'GET',
+    timeout: 6000
+  })
+  if (res.data.status_msg === "Succeed") {
+    if(!res.data.versions){
+      res.data.versions=[]
     }
-  });
+    res.data.versions.forEach(item => {
+      options.push({ value: item.id, label: item.name })
+    })
+  } else { message.warning("获取版本列表失败"); }
+}
+async function deleteDataset(id: String) {
+  const res = await http.fetch(baseurl + '/api/v1/dataset/' + id, {
+    method: 'DELETE',
+    timeout: 6000
+  })
+  if (res.data.status_msg === "succeed") {
+    message.success("删除数据集成功");
+    store.commit("changedataSetNumber");
+    store.commit("changeDataPage", "list");
+  } else {
+    message.warning("删除数据集失败");
+  }
 }
 </script>
 <style scoped>

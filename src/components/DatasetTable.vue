@@ -1,10 +1,6 @@
 <template>
   <div>
-    <a-table
-      :columns="type ? columns1 : columns2"
-      :data-source="data"
-      :pagination="false"
-    >
+    <a-table :columns="type ? columns1 : columns2" :data-source="data" :pagination="false">
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'name'">
           <a @click="showDetail(record.id)">
@@ -20,7 +16,7 @@
         </template>
       </template>
     </a-table>
-    <a-row justify="end" class="bg">
+    <!-- <a-row justify="end" class="bg">
       <a-col :span="10">
         <a-pagination
           v-model:current="current"
@@ -28,17 +24,18 @@
           show-less-items
           @change="handleTableChange"
       /></a-col>
-    </a-row>
+    </a-row> -->
   </div>
 </template>
 <script lang="ts" setup>
 import DetailDialg from "./DetailDialog.vue";
-import { reactive, ref, computed, watch, onMounted } from "vue";
+import { reactive, ref, watch, onMounted } from "vue";
 import { useStore } from "vuex";
 import { useRouter } from "vue-router";
+import baseurl from "../util/baseURL"
 import { http } from "@tauri-apps/api";
-import baseURL from "../BASEURL"
-import  getLabel from "../util/index"
+import getLabel from "../util/index"
+import { message } from "ant-design-vue";
 const router = useRouter();
 const store = useStore();
 const type = ref(false);
@@ -64,7 +61,7 @@ watch(
 watch(
   () => store.state.dataSetNumber,
   (val) => {
-   getList()
+    getList()
   },
 );
 const columns1 = [
@@ -129,7 +126,7 @@ interface label {
   content: string;
 }
 const data: dataType[] = reactive([]);
-const showDetail = (id:String) => {
+const showDetail = (id: String) => {
   store.commit("changeDataPage", "detail");
   store.commit("changeDatasetId", id);
 };
@@ -139,14 +136,22 @@ const handleTableChange = (e: any) => {
   console.log(e);
 };
 async function getList() {
-  await http.fetch(baseURL + '/api/v1/datasets', {
+  const res = await http.fetch(baseurl + '/api/v1/datasets', {
     method: 'GET',
-  }).then(res => {
+    timeout: 6000
+  })
+  if (res.data.status_msg === "succeed") {
+    
+    if (!res.data.datasets) {
+      res.data.datasets = []
+    }
+    data.length=0
     res.data.datasets.forEach((item: any) => {
-      data.push({ id: item.id, name: item.name, replica: item.replica, desc: item.desc, tags: JSON.parse(item.tags) })
+      data.push({ id: item.id, name: item.name, replica: item.replica, desc: item.desc, tags: item.tags })
     })
-
-  });
+  } else {
+    message.warning("获取数据集列表失败")
+  }
 }
 </script>
 <style scoped>
@@ -154,6 +159,7 @@ async function getList() {
   background-color: #fff;
   padding: 10px 0 10px 0;
 }
+
 :deep(.ant-pagination) {
   text-align: right;
 }

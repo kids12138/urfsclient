@@ -9,6 +9,7 @@ export default createStore({
     dataType: "persional",
     dataPage:"list",
     dataSetId:"",
+    dataSetVersion:"default",
     dataSetNumber:true
   },
   getters: {
@@ -33,6 +34,9 @@ export default createStore({
     },
     changeDatasetId(state: any, data: string) {
       state.dataSetId = data
+    },
+    changeDataSetVersion(state: any, data: string) {
+      state.dataSetVersion = data
     },
     changedataSetNumber(state: any) {
       state.dataSetNumber = !state.dataSetNumber

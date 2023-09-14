@@ -9,12 +9,12 @@
           <a-textarea v-model:value="formState.desc" />
         </a-form-item>
         <a-form-item label="标签类型" name="type">
-          <a-select v-model:value="formState.tags" mode="multiple" :showSearch=false style="width: 100%"
+          <a-select v-model:value="formState.tags" :showSearch=false style="width: 100%"
             :options="options" @change="handleChange()"></a-select>
         </a-form-item>
         <a-form-item label="副本数">
           <a-form-item name="copy" no-style>
-            <a-input-number v-model:value="formState['replica']" :min="1" :max="10" />
+            <a-input-number v-model:value="formState['replica']" :min="0" :max="10" />
           </a-form-item>
           <span class="ant-form-text">
             <a-alert message="副本数最小为0" type="warning" show-icon /></span>
@@ -31,7 +31,7 @@ import type { Rule } from "ant-design-vue/es/form";
 import { message } from "ant-design-vue";
 import { ArrowUpOutlined, ArrowDownOutlined } from "@ant-design/icons-vue";
 import { http } from "@tauri-apps/api";
-import baseURL from "../BASEURL"
+import baseurl  from  "../util/baseURL"
 const id = ref<string>("")
 const store = useStore();
 onMounted(() => {
@@ -43,7 +43,7 @@ onMounted(() => {
 interface FormState {
   name: string;
   desc: string;
-  tags: [];
+  tags: "";
   replica: number;
 }
 const props = defineProps({
@@ -72,7 +72,7 @@ const wrapperCol = { span: 10 };
 const formState: UnwrapRef<FormState> = reactive({
   name: "",
   desc: "",
-  tags: [],
+  tags: "其他",
   replica: 0,
 });
 const rules: Record<string, Rule[]> = {
@@ -85,43 +85,52 @@ const rules: Record<string, Rule[]> = {
   ],
 };
 async function createDataset() {
-  console.log(formState.tags)
-  await http.fetch(baseURL + '/api/v1/dataset', {
-    method: 'POST',
-    body: http.Body.form({ name: formState.name, desc: formState.desc, tags: JSON.stringify(formState.tags), replica: formState.replica.toString() })
-  }).then(res => {
-    if (res.data.status_msg == "succeed") { message.success("创建数据集成功"); store.commit("changedataSetNumber"); reqclick(); }
-    else { message.warning("创建数据集失败") }
-
+  const body = http.Body.form({
+    name: formState.name,
+    desc: formState.desc,
+    replica: formState.replica.toString(),
+    tags:formState.tags
   });
+  const res = await http.fetch(baseurl+'/api/v1/dataset', {
+    method: 'POST',
+    body: body,
+    timeout: 6000
+  })
+  if (res.data.status_msg == "succeed") {
+    message.success("创建数据集成功"); store.commit("changedataSetNumber"); reqclick();
+  } else { message.warning("创建数据集失败") }
 }
 async function editeDataset(id: String) {
-  await http.fetch(baseURL + '/api/v1/dataset/' + id, {
-    method: 'PATCH',
-    body: http.Body.form({ name: formState.name, desc: formState.desc, tags: JSON.stringify(formState.tags), replica: formState.replica.toString() })
-  }).then(res => {
-    if (res.data.status_msg == "succeed") {
-      message.success("编辑数据集成功");
-      store.commit("changedataSetNumber");
-      reqclick();
-
-    }
-    else { message.warning("编辑数据集失败") }
-
+  const body = http.Body.form({
+    name: formState.name,
+    desc: formState.desc,
+    replica: formState.replica.toString(),
+    tags:formState.tags
   });
+  const res = await http.fetch(baseurl+'/api/v1/dataset/' + id, {
+    method: 'PATCH',
+    body: body,
+    timeout: 6000
+  })
+  if (res.data.status_msg == "succeed") {
+    message.success("编辑数据集成功");
+    store.commit("changedataSetNumber");
+    reqclick();
+
+  }
+  else { message.warning("编辑数据集失败") }
 }
 async function getDetail(id: String) {
-  await http.fetch(baseURL + '/api/v1/dataset/' + id, {
+  const res = await http.fetch(baseurl+'/api/v1/dataset/' + id, {
     method: 'GET',
-  }).then(res => {
-    console.log(res)
+    timeout: 6000
+  })
+  if (res.data.status_msg == "succeed") {
     formState.name = res.data.dataset.name
     formState.desc = res.data.dataset.desc
     formState.replica = res.data.dataset.replica
-    formState.tags=JSON.parse(res.data.dataset.tags)
-
-
-  });
+    formState.tags = res.data.dataset.tags[0]
+  } else { message.warning("获取数据集详情失败") }
 }
 const onSubmit = () => {
   formRef.value

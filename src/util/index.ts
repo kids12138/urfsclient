@@ -14,7 +14,7 @@ function getLabel(name: String): resType{
             return { color: "orange", content: "数据增强" }
                 ;
         case "文本分类":
-            return { color: "green", content: "文本分类" }
+            return { color: "grey", content: "文本分类" }
                 ;
         case "目标检测":
             return { color: "cyan", content: "目标检测" }
@@ -27,7 +27,7 @@ function getLabel(name: String): resType{
         case "音频分类":
             return { color: "purple", content: "音频分类" }
         default:
-            return { color: "grey", content: "其他" }
+            return { color: "green", content: "其他" }
     }
 }
 export default getLabel

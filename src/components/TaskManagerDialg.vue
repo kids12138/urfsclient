@@ -9,12 +9,13 @@
       :centered="true"
     >
       <p>
-        <a-tabs v-model:activeKey="activeKey">
-          <a-tab-pane key="1" tab="运行中"><taskTable/></a-tab-pane>
-          <a-tab-pane key="2" tab="已暂停"><taskTable/></a-tab-pane>
-          <a-tab-pane key="3" tab="已完成"><taskTable/></a-tab-pane>
-          <a-tab-pane key="4" tab="初始化"><taskTable/></a-tab-pane>
-          <a-tab-pane key="5" tab="失败"><taskTable/></a-tab-pane>
+        <a-tabs v-model:activeKey="activeKey"  destroyInactiveTabPane>
+          <a-tab-pane key="1" tab="上传中" ><taskTable state="Uploading"/></a-tab-pane>
+          <a-tab-pane key="2" tab="已暂停" ><taskTable state="Stop"/></a-tab-pane>
+          <a-tab-pane key="3" tab="已完成" ><taskTable state="Success"/></a-tab-pane>
+          <a-tab-pane key="4" tab="初始化" ><taskTable state="Init"/></a-tab-pane>
+          <a-tab-pane key="5" tab="失败"><taskTable state="Failed"/></a-tab-pane>
+          <a-tab-pane key="6" tab="副本同步中"><taskTable state="AsyncProcessing"/></a-tab-pane>
         </a-tabs>
       </p>
     </a-modal>

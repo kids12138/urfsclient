@@ -6,9 +6,10 @@ import { info, error } from "tauri-plugin-log-api";
 import { message } from "ant-design-vue";
 import { appCacheDir } from "@tauri-apps/api/path";
 import { FileOutlined, FolderOutlined } from "@ant-design/icons-vue";
-
+import { useStore } from "vuex";
+import baseURL from "../util/baseURL"
+const store = useStore();
 const uploadItemList: any = reactive([]);
-
 async function select_upload_fold() {
   const selected_folder = await open({
     multiple: false,
@@ -17,7 +18,7 @@ async function select_upload_fold() {
 
   if (typeof selected_folder === "string") {
     info("[ui] select upload folder :" + selected_folder);
-    uploadItemList.push({ name: selected_folder, isDir: true });
+    uploadItemList[0] = { name: selected_folder, isDir: true }
   }
 }
 
@@ -31,11 +32,11 @@ async function star_upload(source: string) {
   try {
     await invoke("start_upload", {
       req: JSON.stringify({
-        dataset_id: 'xxx',
-        dataset_version_id: 'default',
+        dataset_id: store.state.dataSetId,
+        dataset_version_id: store.state.dataSetVersion,
         dataset_cache_dir: appCacheDirPath,
         dataset_source: source,
-        server_endpoint: 'http://192.168.23.53:65004'
+        server_endpoint: baseURL
       })
     })
     message.success("正在上传");
@@ -49,7 +50,6 @@ async function star_upload(source: string) {
 <template>
   <div class="card">
     <a-button type="primary" @click="select_upload_fold()">上传数据集</a-button>
-    <!-- <button type="button" @click="get_history()">历史任务</button> -->
   </div>
 
   <a-list class="demo-upload-list" item-layout="horizontal" :data-source="uploadItemList">
@@ -88,12 +88,13 @@ async function star_upload(source: string) {
 }
 
 :deep(.ant-list-item-meta-content) {
-  width: 200px!important;
+  width: 200px !important;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 :deep(.ant-list-item-action) {
-  margin-left: 0px!important
-}</style>
+  margin-left: 0px !important
+}
+</style>

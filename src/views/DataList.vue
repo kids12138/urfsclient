@@ -7,7 +7,7 @@
             <a-row justify="center">
               <a-col :span="8" :push="4"
                 ><a-input v-model:value="value" placeholder="请输入搜索内容"
-              /></a-col>
+              disabled/></a-col>
             </a-row>
           </a-col>
           <a-col :span="4" style="text-align: right"
