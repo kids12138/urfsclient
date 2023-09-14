@@ -24,8 +24,8 @@ import { reactive, ref, watch, onMounted } from "vue";
 import { useStore } from "vuex";
 import getLabel from "../util/index"
 import { message } from "ant-design-vue";
-import baseurl  from  "../util/baseURL"
-import {http} from "@tauri-apps/api";
+import baseurl from "../util/baseURL"
+import { http } from "@tauri-apps/api";
 const store = useStore();
 const show = ref<boolean>(false);
 onMounted(() => {
@@ -72,21 +72,26 @@ const showDetail = (id: String) => {
 };
 
 async function getList() {
-  const res = await http.fetch(baseurl+'/api/v1/datasets', {
-    method: 'GET',
-    timeout:6000
-  })
-  if (res.data["status_msg"] === "succeed") {
-    if(!res.data.datasets){
-      res.data.datasets=[]
-    }
-    cardList.length=0
-    res.data.datasets.forEach((item: any) => {
-      cardList.push({ id: item.id, name: item.name, replica: item.replica, desc: item.desc, tags: item.tags })
+  try {
+    const res = await http.fetch(baseurl + '/api/v1/datasets', {
+      method: 'GET',
+      timeout: 6000
     })
-  } else {
-    message.warning("获取数据集列表失败")
+    if (res.data["status_msg"] === "succeed") {
+      if (!res.data.datasets) {
+        res.data.datasets = []
+      }
+      cardList.length = 0
+      res.data.datasets.forEach((item: any) => {
+        cardList.push({ id: item.id, name: item.name, replica: item.replica, desc: item.desc, tags: item.tags })
+      })
+    } else {
+      message.warning("获取数据集列表失败")
+    }
+  } catch (err: any) {
+    message.error("err", err);
   }
+
 }
 </script>
 <style scoped>

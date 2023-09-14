@@ -9,8 +9,8 @@
           <a-textarea v-model:value="formState.desc" />
         </a-form-item>
         <a-form-item label="标签类型" name="type">
-          <a-select v-model:value="formState.tags" :showSearch=false style="width: 100%"
-            :options="options" @change="handleChange()"></a-select>
+          <a-select v-model:value="formState.tags" :showSearch=false style="width: 100%" :options="options"
+            @change="handleChange()"></a-select>
         </a-form-item>
         <a-form-item label="副本数">
           <a-form-item name="copy" no-style>
@@ -31,7 +31,7 @@ import type { Rule } from "ant-design-vue/es/form";
 import { message } from "ant-design-vue";
 import { ArrowUpOutlined, ArrowDownOutlined } from "@ant-design/icons-vue";
 import { http } from "@tauri-apps/api";
-import baseurl  from  "../util/baseURL"
+import baseurl from "../util/baseURL"
 const id = ref<string>("")
 const store = useStore();
 onMounted(() => {
@@ -89,48 +89,61 @@ async function createDataset() {
     name: formState.name,
     desc: formState.desc,
     replica: formState.replica.toString(),
-    tags:formState.tags
+    tags: formState.tags
   });
-  const res = await http.fetch(baseurl+'/api/v1/dataset', {
-    method: 'POST',
-    body: body,
-    timeout: 6000
-  })
-  if (res.data.status_msg == "succeed") {
-    message.success("创建数据集成功"); store.commit("changedataSetNumber"); reqclick();
-  } else { message.warning("创建数据集失败") }
+  try {
+    const res = await http.fetch(baseurl + '/api/v1/dataset', {
+      method: 'POST',
+      body: body,
+      timeout: 6000
+    })
+    if (res.data.status_msg == "succeed") {
+      message.success("创建数据集成功"); store.commit("changedataSetNumber"); reqclick();
+    } else { message.warning("创建数据集失败") }
+  } catch (err: any) {
+    message.error("err", err);
+  }
+
 }
 async function editeDataset(id: String) {
   const body = http.Body.form({
     name: formState.name,
     desc: formState.desc,
     replica: formState.replica.toString(),
-    tags:formState.tags
+    tags: formState.tags
   });
-  const res = await http.fetch(baseurl+'/api/v1/dataset/' + id, {
-    method: 'PATCH',
-    body: body,
-    timeout: 6000
-  })
-  if (res.data.status_msg == "succeed") {
-    message.success("编辑数据集成功");
-    store.commit("changedataSetNumber");
-    reqclick();
+  try {
+    const res = await http.fetch(baseurl + '/api/v1/dataset/' + id, {
+      method: 'PATCH',
+      body: body,
+      timeout: 6000
+    })
+    if (res.data.status_msg == "succeed") {
+      message.success("编辑数据集成功");
+      store.commit("changedataSetNumber");
+      reqclick();
 
+    }
+    else { message.warning("编辑数据集失败") }
+  } catch (err: any) {
+    message.error("err", err);
   }
-  else { message.warning("编辑数据集失败") }
 }
 async function getDetail(id: String) {
-  const res = await http.fetch(baseurl+'/api/v1/dataset/' + id, {
-    method: 'GET',
-    timeout: 6000
-  })
-  if (res.data.status_msg == "succeed") {
-    formState.name = res.data.dataset.name
-    formState.desc = res.data.dataset.desc
-    formState.replica = res.data.dataset.replica
-    formState.tags = res.data.dataset.tags[0]
-  } else { message.warning("获取数据集详情失败") }
+  try {
+    const res = await http.fetch(baseurl + '/api/v1/dataset/' + id, {
+      method: 'GET',
+      timeout: 6000
+    })
+    if (res.data.status_msg == "succeed") {
+      formState.name = res.data.dataset.name
+      formState.desc = res.data.dataset.desc
+      formState.replica = res.data.dataset.replica
+      formState.tags = res.data.dataset.tags[0]
+    } else { message.warning("获取数据集详情失败") }
+  } catch (err: any) {
+    message.error("err", err);
+  }
 }
 const onSubmit = () => {
   formRef.value

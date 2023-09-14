@@ -244,31 +244,39 @@ const shareConfirm = () => {
   });
 };
 async function getDetail(id: String) {
-  const res = await http.fetch(baseurl + '/api/v1/dataset/' + id, {
-    method: 'GET',
-    timeout: 6000
-  })
-  if (res.data.status_msg === "succeed") {
-    formState.name = res.data.dataset.name
-    formState.id = res.data.dataset.id
-    formState.desc = res.data.dataset.desc
-    formState.tags = res.data.dataset.tags
-    formState.replica = res.data.dataset.replica
+  try {
+    const res = await http.fetch(baseurl + '/api/v1/dataset/' + id, {
+      method: 'GET',
+      timeout: 6000
+    })
+    if (res.data.status_msg === "succeed") {
+      formState.name = res.data.dataset.name
+      formState.id = res.data.dataset.id
+      formState.desc = res.data.dataset.desc
+      formState.tags = res.data.dataset.tags
+      formState.replica = res.data.dataset.replica
+    }
+  } catch (err: any) {
+    message.error("err", err);
   }
 }
 async function getVersion() {
-  const res = await http.fetch(baseurl + '/api/v1/dataset/' + id + "/versions", {
-    method: 'GET',
-    timeout: 6000
-  })
-  if (res.data.status_msg === "Succeed") {
-    if(!res.data.versions){
-      res.data.versions=[]
-    }
-    res.data.versions.forEach(item => {
-      options.push({ value: item.id, label: item.name })
+  try {
+    const res = await http.fetch(baseurl + '/api/v1/dataset/' + id + "/versions", {
+      method: 'GET',
+      timeout: 6000
     })
-  } else { message.warning("获取版本列表失败"); }
+    if (res.data.status_msg === "Succeed") {
+      if (!res.data.versions) {
+        res.data.versions = []
+      }
+      res.data.versions.forEach(item => {
+        options.push({ value: item.id, label: item.name })
+      })
+    } else { message.warning("获取版本列表失败"); }
+  } catch (err: any) {
+    message.error("err", err);
+  }
 }
 async function deleteDataset(id: String) {
   const res = await http.fetch(baseurl + '/api/v1/dataset/' + id, {
