@@ -1,5 +1,5 @@
 import { fetch } from '@tauri-apps/api/http'
-import baseurl  from  "./baseURL"
+import baseurl  from  "./config"
 import qs from 'qs'
 import { anyType } from 'ant-design-vue/es/_util/type'
 

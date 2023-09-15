@@ -31,7 +31,7 @@ import type { Rule } from "ant-design-vue/es/form";
 import { message } from "ant-design-vue";
 import { ArrowUpOutlined, ArrowDownOutlined } from "@ant-design/icons-vue";
 import { http } from "@tauri-apps/api";
-import baseurl from "../util/baseURL"
+import config from "../util/config"
 const id = ref<string>("")
 const store = useStore();
 onMounted(() => {
@@ -72,7 +72,7 @@ const wrapperCol = { span: 10 };
 const formState: UnwrapRef<FormState> = reactive({
   name: "",
   desc: "",
-  tags: "其他",
+  tags: "",
   replica: 0,
 });
 const rules: Record<string, Rule[]> = {
@@ -84,6 +84,7 @@ const rules: Record<string, Rule[]> = {
     },
   ],
 };
+
 async function createDataset() {
   const body = http.Body.form({
     name: formState.name,
@@ -92,11 +93,13 @@ async function createDataset() {
     tags: formState.tags
   });
   try {
-    const res = await http.fetch(baseurl + '/api/v1/dataset', {
+    const res:any = await http.fetch(config.baseURL + '/api/v1/dataset', {
       method: 'POST',
       body: body,
-      timeout: 6000
+      timeout: config.timeout,
+
     })
+
     if (res.data.status_msg == "succeed") {
       message.success("创建数据集成功"); store.commit("changedataSetNumber"); reqclick();
     } else { message.warning("创建数据集失败") }
@@ -113,10 +116,10 @@ async function editeDataset(id: String) {
     tags: formState.tags
   });
   try {
-    const res = await http.fetch(baseurl + '/api/v1/dataset/' + id, {
+    const res:any = await http.fetch(config.baseURL + '/api/v1/dataset/' + id, {
       method: 'PATCH',
       body: body,
-      timeout: 6000
+      timeout: config.timeout
     })
     if (res.data.status_msg == "succeed") {
       message.success("编辑数据集成功");
@@ -131,9 +134,9 @@ async function editeDataset(id: String) {
 }
 async function getDetail(id: String) {
   try {
-    const res = await http.fetch(baseurl + '/api/v1/dataset/' + id, {
+    const res:any = await http.fetch(config.baseURL + '/api/v1/dataset/' + id, {
       method: 'GET',
-      timeout: 6000
+      timeout: config.timeout
     })
     if (res.data.status_msg == "succeed") {
       formState.name = res.data.dataset.name
@@ -172,7 +175,6 @@ const options = [
   { label: "目标跟踪", value: "目标跟踪" },
   { label: "语义分割", value: "语义分割" },
   { label: "音频分类", value: "音频分类" },
-  { label: "其他", value: "其他" },
 ];
 const handleChange = () => { };
 </script>

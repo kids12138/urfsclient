@@ -24,8 +24,9 @@ import { reactive, ref, watch, onMounted } from "vue";
 import { useStore } from "vuex";
 import getLabel from "../util/index"
 import { message } from "ant-design-vue";
-import baseurl from "../util/baseURL"
+import config from "../util/config"
 import { http } from "@tauri-apps/api";
+import { T } from "@tauri-apps/api/event-41a9edf5";
 const store = useStore();
 const show = ref<boolean>(false);
 onMounted(() => {
@@ -70,19 +71,18 @@ const showDetail = (id: String) => {
   store.commit("changeDataPage", "detail");
   store.commit("changeDatasetId", id);
 };
-
 async function getList() {
   try {
-    const res = await http.fetch(baseurl + '/api/v1/datasets', {
+    const res: any = await http.fetch(config.baseURL + '/api/v1/datasets', {
       method: 'GET',
-      timeout: 6000
+      timeout: config.timeout,
     })
     if (res.data["status_msg"] === "succeed") {
       if (!res.data.datasets) {
         res.data.datasets = []
       }
       cardList.length = 0
-      res.data.datasets.forEach((item: any) => {
+      res.data.datasets.forEach((item: { id: string; name: string; desc: string, replica: Number, tags: [] }) => {
         cardList.push({ id: item.id, name: item.name, replica: item.replica, desc: item.desc, tags: item.tags })
       })
     } else {
@@ -91,7 +91,6 @@ async function getList() {
   } catch (err: any) {
     message.error("err", err);
   }
-
 }
 </script>
 <style scoped>

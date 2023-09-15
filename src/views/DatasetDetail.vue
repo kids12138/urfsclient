@@ -35,15 +35,16 @@
           <a-textarea v-model:value="desc" class="m-1" disabled />
         </a-tab-pane>
         <a-tab-pane key="2" tab="数据集文件" force-render>
-          <a-table :columns="columns" :data-source="data" /></a-tab-pane>
+          <a-table :columns="columns" :data-source="data" :pagination="false"/></a-tab-pane>
         <a-tab-pane key="3" tab="副本数据源"></a-tab-pane>
         <a-tab-pane key="4" tab="使用方法">
           <a-textarea v-model:value="use" class="m-1" disabled /></a-tab-pane>
       </a-tabs>
     </p>
     <operateDialg v-if="open2" @closeDatasetDialg="closeDatasetDialg" title="编辑数据集" />
-    <a-modal v-model:open="open3" title="上传数据集" @ok="hideModal" :centered="true">
-      <upload></upload>
+    <a-modal v-model:open="open3" title="上传数据集" @ok="hideModal" :centered="true"
+      :ok-button-props="{ style: { display: 'none' } }" :cancel-button-props="{ style: { display: 'none' } }">
+      <upload @close="hideModal"></upload>
     </a-modal>
   </div>
 </template>
@@ -58,7 +59,7 @@ import operateDialg from "../components/OperateDatasetDialg.vue";
 import upload from "../components/Upload.vue";
 import { useStore } from "vuex";
 import { message } from "ant-design-vue";
-import baseurl from "../util/baseURL"
+import config from "../util/config"
 import { http } from "@tauri-apps/api";
 import getLabel from "../util/index"
 const store = useStore();
@@ -245,10 +246,11 @@ const shareConfirm = () => {
 };
 async function getDetail(id: String) {
   try {
-    const res = await http.fetch(baseurl + '/api/v1/dataset/' + id, {
+    const res: any = await http.fetch(config.baseURL + '/api/v1/dataset/' + id, {
       method: 'GET',
-      timeout: 6000
+      timeout: config.timeout
     })
+
     if (res.data.status_msg === "succeed") {
       formState.name = res.data.dataset.name
       formState.id = res.data.dataset.id
@@ -262,26 +264,27 @@ async function getDetail(id: String) {
 }
 async function getVersion() {
   try {
-    const res = await http.fetch(baseurl + '/api/v1/dataset/' + id + "/versions", {
+    const res: any = await http.fetch(config.baseURL + '/api/v1/dataset/' + id + "/versions", {
       method: 'GET',
-      timeout: 6000
+      timeout: config.timeout
     })
     if (res.data.status_msg === "Succeed") {
       if (!res.data.versions) {
         res.data.versions = []
       }
-      res.data.versions.forEach(item => {
+      res.data.versions.forEach((item: { id: string; name: string; }) => {
         options.push({ value: item.id, label: item.name })
       })
     } else { message.warning("获取版本列表失败"); }
   } catch (err: any) {
+
     message.error("err", err);
   }
 }
 async function deleteDataset(id: String) {
-  const res = await http.fetch(baseurl + '/api/v1/dataset/' + id, {
+  const res: any = await http.fetch(config.baseURL + '/api/v1/dataset/' + id, {
     method: 'DELETE',
-    timeout: 6000
+    timeout: config.timeout
   })
   if (res.data.status_msg === "succeed") {
     message.success("删除数据集成功");

@@ -5,22 +5,14 @@
         <a-row justify="space-between">
           <a-col :span="20">
             <a-row justify="center">
-              <a-col :span="8" :push="4"
-                ><a-input v-model:value="value" placeholder="请输入搜索内容"
-              disabled/></a-col>
+              <a-col :span="8" :push="4"><a-input v-model:value="value" placeholder="请输入搜索内容" disabled /></a-col>
             </a-row>
           </a-col>
-          <a-col :span="4" style="text-align: right"
-            ><AppstoreOutlined
-              :style="{ fontSize: '30px', color: '#000' }"
-              @click="changeForm('card')"
-              v-if="type === 'table'"
-            />
-            <OrderedListOutlined
-              :style="{ fontSize: '30px', color: '#000' }"
-              @click="changeForm('table')"
-              v-if="type === 'card'"
-            />
+          <a-col :span="4" style="text-align: right">
+            <AppstoreOutlined :style="{ fontSize: '30px', color: '#000' }" @click="changeForm('card')"
+              v-if="type === 'table'" />
+            <OrderedListOutlined :style="{ fontSize: '30px', color: '#000' }" @click="changeForm('table')"
+              v-if="type === 'card'" />
           </a-col>
         </a-row>
       </div>
@@ -104,6 +96,7 @@ const siderStyle: CSSProperties = {
 .mb-2 {
   margin-bottom: 40px;
 }
+
 .tagClass {
   width: 120px;
   height: 50px;
@@ -113,8 +106,12 @@ const siderStyle: CSSProperties = {
   font-size: 14px;
   font-weight: 800;
 }
+
 .tagClass:hover {
   cursor: pointer;
 }
-.buttonGroup{margin: 20px 20px 50px 20px;}
+
+.buttonGroup {
+  margin: 20px 20px 50px 20px;
+}
 </style>

@@ -31,7 +31,7 @@ import { invoke } from "@tauri-apps/api/tauri";
 import { message } from "ant-design-vue";
 import { info, error } from "tauri-plugin-log-api";
 import { onMounted, reactive, onUnmounted, ref } from 'vue'
-import baseurl from "../util/baseURL"
+import config from "../util/config"
 import { http } from "@tauri-apps/api";
 import { useInternalMessage } from "ant-design-vue/es/message/useMessage";
 const timer = ref()
@@ -55,17 +55,20 @@ const columns = [
         title: "名称",
         dataIndex: "name",
         key: "id",
-        width: "500px"
+        width: "300px",
+        align:"center"
     },
     {
         title: "状态",
         dataIndex: "status",
         key: "status",
-        width: "300px"
+        width: "400px",
+        align:"center"
     },
     {
         title: "操作",
         key: "operate",
+        align:"center"
     },
 ];
 interface dataType {
@@ -121,7 +124,7 @@ async function get_history() {
                     arr.push({ name: Object.keys(Data)[i], state: Data[Object.keys(Data)[i]] })
                 }
                 if (arr instanceof Array && arr.length !== 0) {
-                    arr.forEach((item) => {
+                    arr.forEach((item: { name: string, state: any }) => {
                         if (typeof item.state === "string") {
                             if (item.state === props.state) {
                                 data.push({ id: item.name, state: item.state, name: "" })
@@ -134,7 +137,6 @@ async function get_history() {
                 }
             }
 
-
         }
 
     } catch (err: any) {
@@ -143,18 +145,21 @@ async function get_history() {
     }
 }
 const getName = (data: any) => {
-    data.forEach((item: any) => {
+    if (!data) {
+        data = []
+    }
+    data.forEach(async (item: { id: string, name: string }) => {
         const datasetId = item.id.split(":")[0]
         const datasetVersion = item.id.split(":")[1]
         try {
-            http.fetch(baseurl + '/api/v1/dataset/' + datasetId, {
+            const res: any = await http.fetch(config.baseURL + '/api/v1/dataset/' + datasetId, {
                 method: 'GET',
-                timeout: 6000
-            }).then(res => {
-                if (res.data["status_msg"] == "succeed") {
-                    item.name = res.data.dataset.name + ":" + datasetVersion
-                }
+                timeout: config.timeout
             })
+            if (res.data["status_msg"] == "succeed") {
+                item.name = res.data.dataset.name + ":" + datasetVersion
+                console.log(item.name)
+            }
         } catch (err: any) {
             message.error("err", err);
         }

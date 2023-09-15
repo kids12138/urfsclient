@@ -7,7 +7,9 @@ import { message } from "ant-design-vue";
 import { appCacheDir } from "@tauri-apps/api/path";
 import { FileOutlined, FolderOutlined } from "@ant-design/icons-vue";
 import { useStore } from "vuex";
-import baseURL from "../util/baseURL"
+import config from "../util/config"
+import {defineEmits} from 'vue'
+const emit = defineEmits(['close'])
 const store = useStore();
 const uploadItemList: any = reactive([]);
 async function select_upload_fold() {
@@ -15,7 +17,6 @@ async function select_upload_fold() {
     multiple: false,
     directory: true,
   });
-
   if (typeof selected_folder === "string") {
     info("[ui] select upload folder :" + selected_folder);
     uploadItemList[0] = { name: selected_folder, isDir: true }
@@ -36,11 +37,12 @@ async function star_upload(source: string) {
         dataset_version_id: store.state.dataSetVersion,
         dataset_cache_dir: appCacheDirPath,
         dataset_source: source,
-        server_endpoint: baseURL
+        server_endpoint: config.baseURL
       })
      
     })
     message.success("正在上传");
+    emit('close')
   } catch (err: any) {
     message.error("上传出错：", err);
     error(`上传出错: ${err}`);

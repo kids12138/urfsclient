@@ -7,17 +7,17 @@
             <a-col :span="2" class="logo"></a-col>
             <a-col :span="14">
               <a-tabs v-model:activeKey="activeKey" @tabClick="showList()">
-                <a-tab-pane key="1" tab="数据集"></a-tab-pane> </a-tabs
-            ></a-col> </a-row
-        ></a-col>
+                <a-tab-pane key="1" tab="数据集"></a-tab-pane> </a-tabs></a-col> </a-row></a-col>
         <a-col :span="5" class="min-width">
           <a-row justify="end">
-            <a-col :span="2"
-              ><div class="upload" @click="openTaskManager()"></div
-            ></a-col>
+            <a-col :span="2">
+              <div class="upload" @click="openTaskManager()"></div>
+            </a-col>
             <a-col :span="3" class="pt-05">
               <a-avatar :size="50">
-                <template #icon><UserOutlined /></template>
+                <template #icon>
+                  <UserOutlined />
+                </template>
               </a-avatar>
             </a-col>
             <a-col :span="2">
@@ -43,16 +43,9 @@
         </a-layout-content>
       </a-layout>
     </a-layout>
-    <operateDialg
-      v-if="open1"
-      @closeDatasetDialg="closeDatasetDialg"
-      title="创建数据集"
-    />
+    <operateDialg v-if="open1" @closeDatasetDialg="closeDatasetDialg" title="创建数据集" />
     <settingDialg v-if="open2" @closeSettingDialg="closeSettingDialg" />
-    <taskManagerDialg
-      v-if="open3"
-      @closeTaskManagerDialg="closeTaskManagerDialg"
-    />
+    <taskManagerDialg v-if="open3" @closeTaskManagerDialg="closeTaskManagerDialg" />
   </a-layout>
 </template>
 <script lang="ts" setup>
@@ -108,11 +101,13 @@ const showList = () => {
   overflow: hidden;
   padding-left: 10px;
 }
+
 .main_layout {
   width: 100%;
   /* height: 100vh; */
   background-color: #f0f0f0;
 }
+
 .logo {
   background: url("../static/logo.svg");
   background-size: 100% 100%;
@@ -121,16 +116,20 @@ const showList = () => {
   height: 70px;
   min-width: 120px;
 }
+
 :deep(.ant-tabs-nav) {
   height: 70px;
 }
+
 :deep(.ant-tabs-tab-btn) {
   font-size: 20px;
   font-weight: 800;
 }
+
 :deep(.ant-tabs-ink-bar) {
   display: none;
 }
+
 .arrowDown {
   background: url("../static/arrowDown.svg");
   background-size: 100% 100%;
@@ -139,15 +138,19 @@ const showList = () => {
   min-height: 20px;
   margin-top: 30px;
 }
+
 .pt-05 {
   margin-top: 5px;
 }
+
 :deep(.ant-avatar) {
   font-size: 40px !important;
 }
+
 :deep(.ant-badge-count:hover) {
   cursor: pointer;
 }
+
 .upload {
   background: url("../static/upload.svg");
   background-repeat: no-repeat;
@@ -157,8 +160,11 @@ const showList = () => {
   height: 30px;
   margin-top: 25px;
 }
+
 .upload:hover {
   cursor: pointer;
 }
-.min-width{min-width: 350px;}
-</style>
+
+.min-width {
+  min-width: 350px;
+}</style>

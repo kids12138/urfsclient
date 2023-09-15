@@ -32,7 +32,7 @@ import DetailDialg from "./DetailDialog.vue";
 import { reactive, ref, watch, onMounted } from "vue";
 import { useStore } from "vuex";
 import { useRouter } from "vue-router";
-import baseurl from "../util/baseURL"
+import config from "../util/config"
 import { http } from "@tauri-apps/api";
 import getLabel from "../util/index"
 import { message } from "ant-design-vue";
@@ -69,26 +69,31 @@ const columns1 = [
     title: "名称",
     dataIndex: "name",
     key: "name",
+    align:"center"
   },
   {
     title: "Tags",
     key: "tags",
     dataIndex: "tags",
+    align:"center"
   },
   {
     title: "描述",
     dataIndex: "desc",
     key: "desc",
+    align:"center"
   },
   {
     title: "更新时间",
     dataIndex: "updateTime",
     key: "updateTime",
+    align:"center"
   },
   {
     title: "作者",
     dataIndex: "author",
     key: "author",
+    align:"center"
   },
 ];
 const columns2 = [
@@ -96,16 +101,19 @@ const columns2 = [
     title: "名称",
     dataIndex: "name",
     key: "name",
+    align:"center"
   },
   {
     title: "标签",
     key: "tags",
     dataIndex: "tags",
+    align:"center"
   },
   {
     title: "描述",
     dataIndex: "desc",
     key: "desc",
+    align:"center"
   },
   // {
   //   title: "更新时间",
@@ -137,17 +145,16 @@ const handleTableChange = (e: any) => {
 };
 async function getList() {
   try {
-    const res = await http.fetch(baseurl + '/api/v1/datasets', {
+    const res:any = await http.fetch(config.baseURL + '/api/v1/datasets', {
       method: 'GET',
-      timeout: 6000
+      timeout: config.timeout
     })
     if (res.data.status_msg === "succeed") {
-
-      if (!res.data.datasets) {
-        res.data.datasets = []
+      if(!res.data.datasets){
+        res.data.datasets=[]
       }
       data.length = 0
-      res.data.datasets.forEach((item: any) => {
+      res.data.datasets.forEach((item: { id: string; name: string;desc:string,replica:Number,tags:[] }) => {
         data.push({ id: item.id, name: item.name, replica: item.replica, desc: item.desc, tags: item.tags })
       })
     } else {
