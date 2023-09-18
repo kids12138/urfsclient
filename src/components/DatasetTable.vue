@@ -34,7 +34,7 @@ import { useStore } from "vuex";
 import { useRouter } from "vue-router";
 import config from "../util/config"
 import { http } from "@tauri-apps/api";
-import getLabel from "../util/index"
+import {getLabel} from "../util/index"
 import { message } from "ant-design-vue";
 const router = useRouter();
 const store = useStore();

@@ -8,7 +8,7 @@ import { appCacheDir } from "@tauri-apps/api/path";
 import { FileOutlined, FolderOutlined } from "@ant-design/icons-vue";
 import { useStore } from "vuex";
 import config from "../util/config"
-import {defineEmits} from 'vue'
+import { defineEmits } from 'vue'
 const emit = defineEmits(['close'])
 const store = useStore();
 const uploadItemList: any = reactive([]);
@@ -22,31 +22,26 @@ async function select_upload_fold() {
     uploadItemList[0] = { name: selected_folder, isDir: true }
   }
 }
+async function star_upload(source:string) {
 
-async function star_upload(source: string) {
-  const appCacheDirPath = await appCacheDir();
+info(`[ui] star_upload source path:${source}`);
 
-  info(
-    `[ui] star_upload source path:${source}, appCacheDirPath:${appCacheDirPath}`
-  );
-
-  try {
-    await invoke("start_upload", {
-      req: JSON.stringify({
+try{
+   var resp = await invoke("start_upload", { req :JSON.stringify({
         dataset_id: store.state.dataSetId,
-        dataset_version_id: store.state.dataSetVersion,
-        dataset_cache_dir: appCacheDirPath,
+        dataset_version_id: source.substring(source.lastIndexOf('/')+1),
         dataset_source: source,
         server_endpoint: config.baseURL
-      })
-     
-    })
-    message.success("正在上传");
+    })});
     emit('close')
-  } catch (err: any) {
-    message.error("上传出错：", err);
+    message.success('上传请求已发送');
+
+    info(`上传请求返回: ${resp}`);
+
+}catch(err: any){
+    message.error('上传出错：',err);
     error(`上传出错: ${err}`);
-  }
+}
 }
 </script>
 

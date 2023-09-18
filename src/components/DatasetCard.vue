@@ -22,7 +22,7 @@
 <script lang="ts" setup>
 import { reactive, ref, watch, onMounted } from "vue";
 import { useStore } from "vuex";
-import getLabel from "../util/index"
+import {getLabel} from "../util/index"
 import { message } from "ant-design-vue";
 import config from "../util/config"
 import { http } from "@tauri-apps/api";

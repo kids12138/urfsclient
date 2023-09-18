@@ -61,7 +61,7 @@ import { useStore } from "vuex";
 import { message } from "ant-design-vue";
 import config from "../util/config"
 import { http } from "@tauri-apps/api";
-import getLabel from "../util/index"
+import {getLabel} from "../util/index"
 const store = useStore();
 const open2 = ref<boolean>(false);
 const open3 = ref<boolean>(false);
@@ -114,7 +114,7 @@ interface optionType {
   value: string
 
 }
-const options: optionType[] = reactive([{ value: "default", label: "默认" }]);
+const options: optionType[] = reactive([{ value: "", label: "" }]);
 const handleChange = () => {
   store.commit("changeDataSetVersion", value);
 };
@@ -134,7 +134,7 @@ const closeDatasetDialg = (val: boolean) => {
 const showUpload = () => {
   open3.value = true;
 };
-const value = ref("默认");
+const value = ref("");
 const desc = ref("这是一段描述");
 const use = ref("这是一段使用方法");
 const columns = [
@@ -257,6 +257,7 @@ async function getDetail(id: String) {
       formState.desc = res.data.dataset.desc
       formState.tags = res.data.dataset.tags
       formState.replica = res.data.dataset.replica
+      
     }
   } catch (err: any) {
     message.error("err", err);
@@ -264,7 +265,7 @@ async function getDetail(id: String) {
 }
 async function getVersion() {
   try {
-    const res: any = await http.fetch(config.baseURL + '/api/v1/dataset/' + id + "/versions", {
+    const res: any = await http.fetch(config.baseURL + '/api/v1/dataset/' + id.value + "/versions", {
       method: 'GET',
       timeout: config.timeout
     })
@@ -272,9 +273,11 @@ async function getVersion() {
       if (!res.data.versions) {
         res.data.versions = []
       }
+      options.length=0
       res.data.versions.forEach((item: { id: string; name: string; }) => {
         options.push({ value: item.id, label: item.name })
       })
+      value.value=options[0].value
     } else { message.warning("获取版本列表失败"); }
   } catch (err: any) {
 

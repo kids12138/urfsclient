@@ -4,7 +4,6 @@ use crate::dataset_image_cmd;
 //======== dataset_image_cmd.rs ==========
 
 use std::collections::HashMap;
-use std::fmt::{Debug, format};
 use std::path::PathBuf;
 use anyhow::{Ok, Result};
 use std::io::SeekFrom;
@@ -23,6 +22,9 @@ use nydus_storage::{RAFS_MAX_CHUNK_SIZE,RAFS_MAX_CHUNKS_PER_BLOB};
 pub const HTTP_CONN_POOL_DEFAULT_SIZE: usize = 10;
 pub const HTTP_CONN_RECYCLE_TIMEOUT: u64 = 60;
 pub const CHUNK_UPLOADER_MAX_CONCURRENCY: usize = 4;
+pub const HISTORY_TASK_DB_PATH: &str = "./upload_history_data.db";
+pub const HISTORY_TASK_KEY_PREFIX: &str = "urfs";
+pub const HISTORY_TASK_LIST_MAX_LENGTH: usize = 300;
 
 use std::fmt;
 use nydus_utils::digest;
@@ -30,7 +32,6 @@ use nydus_utils::digest;
 use crate::dataset_backend_type::UiResponse;
 use crate::dataset_backend_type::UiStartUploadDatasetRequest;
 use crate::dataset_backend_type::UiStopUploadDatasetRequest;
-use crate::dataset_backend_type::UiTerminateUploadDatasetRequest;
 
 #[derive(Debug,Clone,Serialize, Deserialize)]
 pub enum DataSetStatus{
@@ -43,6 +44,17 @@ pub enum DataSetStatus{
     Success,
     Failed,
     UnKnown,
+}
+
+#[derive(Serialize, Deserialize,Debug)]
+pub struct DatasetHistoryTask{
+    pub dataset_id: String,
+    pub dataset_version_id: String,
+    pub local_dataset_path: String,
+    pub local_dataset_size: u64,
+    pub dataset_status: DataSetStatus,
+    pub payload_type: bool,
+    pub create_timestamp: u64,
 }
 
 //json std is deserialize String to enum
@@ -274,16 +286,20 @@ async fn stat_chunk_file(server_endpoint: &str,mode:&str,dataset_id:&str,dataset
 
 }
 
-fn get_dataset_image_cache_path(req:UiStartUploadDatasetRequest) -> PathBuf {
+fn get_dataset_image_cache_path(req:UiStartUploadDatasetRequest) -> Result<PathBuf> {
 
-    let dataset_cache_dir = Path::new(req.dataset_cache_dir.as_str());
+    let app_cache_dir = std::env::var("URFS_APP_CACHE_DIR")?;
 
-    dataset_cache_dir.join(req.dataset_id.as_str())
+    debug!("[get_dataset_image_cache_path] app_cache_dir:{:?}",app_cache_dir);
+
+    let dataset_cache_dir = Path::new(&app_cache_dir);
+
+    Ok(dataset_cache_dir.join(req.dataset_id.as_str()))
 }
 
 async fn create_dataset_image(req:UiStartUploadDatasetRequest) -> Result<()> {
 
-    let dataset_image_cache_path = get_dataset_image_cache_path(req.clone());
+    let dataset_image_cache_path = get_dataset_image_cache_path(req.clone())?;
 
     if ensure_directory(dataset_image_cache_path.as_path()).is_err() {
         info!("dataset_image_cache_path:{:?} not exist!!!",dataset_image_cache_path);
@@ -317,7 +333,7 @@ async fn create_dataset_image(req:UiStartUploadDatasetRequest) -> Result<()> {
 
 async fn rename_dataset_image_cache(req:UiStartUploadDatasetRequest) -> Result<()> {
 
-    let dataset_image_cache_path = get_dataset_image_cache_path(req.clone());
+    let dataset_image_cache_path = get_dataset_image_cache_path(req.clone())?;
 
     let dataset_meta_path = dataset_image_cache_path.join("meta");
 
@@ -378,12 +394,186 @@ async fn execute_dataset_image_cmd(arg_vec:Vec<&str>) -> Result<()> {
     Ok(())
 }
 
+fn get_history_task_db_path() -> Result<PathBuf> {
+
+    let app_cache_dir = std::env::var("URFS_APP_CACHE_DIR")?;
+
+    debug!("[get_history_task_db_path] history_task_to_db in app_cache_dir:{:?}",app_cache_dir);
+
+    let db_parent_dir_path_buf = PathBuf::from(app_cache_dir);
+
+    let history_task_db_path_buf = db_parent_dir_path_buf.join(HISTORY_TASK_DB_PATH);
+
+    Ok(history_task_db_path_buf)
+}
+
+fn new_history_task_to_db(dataset_id:&str,dataset_version_id:&str,local_dataset_path:&str) -> Result<()> {
+
+    info!("[new_history_task_to_db] add dataset_id:{}, dataset_version_id:{}, local_dataset_path:{}", dataset_id,dataset_version_id,local_dataset_path);
+
+    let history_task_db_path = get_history_task_db_path()?;
+    
+    info!("[new_history_task_to_db] history_task_db_path: {:?}", history_task_db_path);
+
+    let dataset_history_task_db: sled::Db = sled::open(history_task_db_path)?;
+
+    let task_key = format!("{}:{}:{}",HISTORY_TASK_KEY_PREFIX,dataset_id,dataset_version_id);
+
+    let timestamp_duration = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?;
+
+    let task = DatasetHistoryTask{
+        dataset_id: dataset_id.to_string(),
+        dataset_version_id: dataset_version_id.to_string(),
+        local_dataset_path: local_dataset_path.to_string(),
+        local_dataset_size: 0,
+        dataset_status: DataSetStatus::Wait,
+        payload_type: true,
+        create_timestamp: timestamp_duration.as_secs(),
+    };
+
+    let task_json = serde_json::to_string(&task)?;
+
+    info!("[new_history_task_to_db] add task_key:{}, task:{}", task_key,task_json);
+
+    dataset_history_task_db.insert(task_key.as_bytes(),task_json.as_bytes())?;
+
+    Ok(())
+    
+}
+
+fn update_history_task_to_db(dataset_id:&str,dataset_version_id:&str,local_dataset_size: u64,ds: DataSetStatus) -> Result<()> {
+    
+    let history_task_db_path = get_history_task_db_path()?;
+
+    let dataset_history_task_db: sled::Db = sled::open(history_task_db_path)?;
+
+    let task_key = format!("{}:{}:{}",HISTORY_TASK_KEY_PREFIX,dataset_id,dataset_version_id);
+
+    let old_task_json_op = dataset_history_task_db.get(task_key.as_bytes())?;
+    
+    if let Some(old_task_json_bytes) = old_task_json_op {
+
+        let old_task_json = String::from_utf8(old_task_json_bytes.to_vec())?;
+
+        info!("[update_history_task] old task:{},key:{}",old_task_json,task_key);
+
+        let mut old_task = serde_json::from_str::<DatasetHistoryTask>(&old_task_json)?;
+
+        old_task.local_dataset_size = local_dataset_size;
+        old_task.dataset_status = ds;
+
+        let new_task_json = serde_json::to_string(&old_task)?;
+
+        info!("[update_history_task] new task:{},key:{}",new_task_json,task_key);
+
+        dataset_history_task_db.insert(task_key.as_bytes(),new_task_json.as_bytes())?;
+
+    }else{
+        return Err(anyhow!("[update_history_task] Can not get history task of key {:?}",task_key));
+    }
+
+    Ok(())
+}
+
+fn update_history_task_status_to_db(dataset_id:&str,dataset_version_id:&str,ds: DataSetStatus) -> Result<()> {
+
+    let history_task_db_path = get_history_task_db_path()?;
+
+    let dataset_history_task_db: sled::Db = sled::open(history_task_db_path)?;
+
+    let task_key = format!("{}:{}:{}",HISTORY_TASK_KEY_PREFIX,dataset_id,dataset_version_id);
+
+    let old_task_json_op = dataset_history_task_db.get(task_key.as_bytes())?;
+    
+    if let Some(old_task_json_bytes) = old_task_json_op {
+
+        let old_task_json = String::from_utf8(old_task_json_bytes.to_vec())?;
+
+        info!("[update_history_task_status_to_db] old task:{},key:{}",old_task_json,task_key);
+
+        let mut task = serde_json::from_str::<DatasetHistoryTask>(&old_task_json)?;
+
+        task.dataset_status = ds;
+
+        let new_task_json = serde_json::to_string(&task)?;
+
+        info!("[update_history_task_status_to_db] new task:{},key:{}",new_task_json,task_key);
+
+        dataset_history_task_db.insert(task_key.as_bytes(),new_task_json.as_bytes())?;
+
+    }else{
+        return Err(anyhow!("[update_history_task_status_to_db] Can not get task of key {:?}",task_key));
+    }
+
+    Ok(())
+    
+}
+
+
+fn delete_history_task_to_db(dataset_id:&str,dataset_version_id:&str) -> Result<()> {
+    let history_task_db_path = get_history_task_db_path()?;
+
+    let dataset_history_task_db: sled::Db = sled::open(history_task_db_path)?;
+
+    let task_key = format!("{}:{}:{}",HISTORY_TASK_KEY_PREFIX,dataset_id,dataset_version_id);
+
+    info!("[delete_history_task_to_db] task key:{}",task_key);
+
+    dataset_history_task_db.remove(task_key.as_bytes())?;
+
+    Ok(())
+}
+
+fn get_history_task_list_from_db(pre_len: usize) -> Result<String> {
+    let history_task_db_path = get_history_task_db_path()?;
+
+    let dataset_history_task_db: sled::Db = sled::open(history_task_db_path)?;
+
+    let history_tasks_iter = dataset_history_task_db.scan_prefix(HISTORY_TASK_KEY_PREFIX.as_bytes());
+
+    let mut history_tasks = vec![];
+
+    for kv_result in history_tasks_iter {
+        if let std::result::Result::Ok(kv) = kv_result {
+
+            let task_json = String::from_utf8(kv.1.to_vec())?;
+
+            let mut task =  serde_json::from_str::<DatasetHistoryTask>(&task_json)?;
+            
+            if std::env::var("URFS_IS_FIRST_REQUEST").is_err(){
+                //First request history_task_list will set Uploading DatasetStatus to Stop
+                std::env::set_var("URFS_IS_FIRST_REQUEST","false");
+                
+                let dataset_status_json_str =  serde_json::to_string(&task.dataset_status)?;
+
+                if dataset_status_json_str.contains("Uploading") {
+                    task.dataset_status = DataSetStatus::Stop;
+                }
+            }
+
+            history_tasks.push(task);
+
+        }else{
+            break;
+        }
+    }
+
+    history_tasks.sort_by(|a, b| b.create_timestamp.cmp(&a.create_timestamp));
+    //get pre-len tasks
+    history_tasks.truncate(pre_len);    
+
+    info!("[get_history_task_list_from_db] task list:{:?} ",history_tasks);
+
+    let history_tasks_json_str =  serde_json::to_string(&history_tasks)?;
+
+    Ok(history_tasks_json_str)
+}
 
 async fn start_dataset_uploader(all_dataset_chunk_sema: Arc<Semaphore>, dataset_status_sender: mpsc::Sender<(String,String,DataSetStatus)>,
                                 uploader_shutdown_cmd_suber: broadcast::Sender<()>,uploader_shutdown_cmd_rx:broadcast::Receiver<()>,
                                 req:UiStartUploadDatasetRequest) -> Result<()> {
        
-    let dataset_image_cache_path = get_dataset_image_cache_path(req.clone());
+    let dataset_image_cache_path = get_dataset_image_cache_path(req.clone())?;
 
     ensure_directory(dataset_image_cache_path.as_path())?;
 
@@ -406,6 +596,8 @@ async fn start_dataset_uploader(all_dataset_chunk_sema: Arc<Semaphore>, dataset_
     let dataset_id = req.dataset_id.clone();
     let dataset_version_id = req.dataset_version_id.clone();
 
+    update_history_task_to_db(req.dataset_id.as_str(), req.dataset_version_id.as_str(), dataset_meta.uncompressed_size,DataSetStatus::ReadyUpload)?;
+    
     //Concurent upload futures tree
     let mut uploader: DatasetUploader = DatasetUploader::new(dataset_id,
                                                                 dataset_version_id,
@@ -440,8 +632,8 @@ async fn start_upload(all_dataset_sema: Arc<Semaphore>, dataset_status_sender: m
     result = create_dataset_image(req.clone()).await;
 
     if result.is_ok() {
-        dataset_status = DataSetStatus::ReadyUpload;
-        dataset_status_sender.send((req.dataset_id.clone(),req.dataset_version_id.clone(),dataset_status)).await?;
+        // dataset_status = DataSetStatus::ReadyUpload;
+        // dataset_status_sender.send((req.dataset_id.clone(),req.dataset_version_id.clone(),dataset_status)).await?;
         
         result = start_dataset_uploader(all_dataset_sema.clone(), dataset_status_sender.clone(),uploader_shutdown_cmd_suber,uploader_shutdown_cmd_rx,req.clone()).await;
         
@@ -461,6 +653,7 @@ async fn start_upload(all_dataset_sema: Arc<Semaphore>, dataset_status_sender: m
 
     Ok(())
 }
+
 
 #[derive(Debug,PartialEq,Serialize, Deserialize)]
 enum UrchinStatusCode{
@@ -497,7 +690,7 @@ struct StatFileResponse {
 //ToDo: DatasetManager work for dataset upload filter and collector and CC controller, do not need to upload a uploading dataset
 //refer loop & TCP::Listener
 pub struct DatasetManager {
-    upload_dataset_history: HashMap<String,DataSetStatus>,
+    //upload_dataset_history: HashMap<String,DataSetStatus>,
     all_dataset_sema :Arc<Semaphore>,
     dataset_status_sender: mpsc::Sender<(String,String,DataSetStatus)>,
     dataset_status_collector: mpsc::Receiver<(String,String,DataSetStatus)>,
@@ -511,9 +704,9 @@ pub struct DatasetManager {
 impl DatasetManager {
     pub fn new(ui_cmd_collector: mpsc::Receiver<(String,String,oneshot::Sender<UiResponse>)>) -> Self {
         let (dataset_status_sender,dataset_status_collector) = mpsc::channel(100);
-    
+
         Self {
-            upload_dataset_history: HashMap::new(),
+            //upload_dataset_history: HashMap::new(),
             all_dataset_sema: Arc::new(Semaphore::new(CHUNK_UPLOADER_MAX_CONCURRENCY)),
             dataset_status_sender,
             dataset_status_collector,
@@ -535,7 +728,12 @@ impl DatasetManager {
                     debug!("[DatasetManager]: received dataset_status: {:?}. dataset_id:{},dataset_version_id:{}",
                     dataset_status,dataset_id,dataset_version_id);
         
-                    self.set_dataset_status_if_exist(dataset_id.as_str(),dataset_version_id.as_str(), dataset_status);
+                   let update_hist_task_result = update_history_task_status_to_db(dataset_id.as_str(),dataset_version_id.as_str(), dataset_status.clone());
+
+                   if update_hist_task_result.is_err() {
+                       error!("[DatasetManager]: update_history_task_status_to_db failed, dataset_id:{},dataset_version_id:{},dataset_status:{:?}, err:{:?}",
+                       dataset_id,dataset_version_id,dataset_status,update_hist_task_result);
+                   }
                 },
                 //allow ui_cmd_sender free!
                 Some((cmd,req_json,resp_sender)) =  self.ui_cmd_collector.recv() => {
@@ -546,38 +744,46 @@ impl DatasetManager {
                             debug!("[DatasetManager]: ui_cmd_collector received cmd: {}, request: {:?}",cmd,req_json);
                             
                             let req_json_result =  serde_json::from_str::<UiStartUploadDatasetRequest>(&req_json);
-                            
+
                             match req_json_result {
                                 std::result::Result::Ok(req) => {
-                                    
+                            
                                     let (uploader_shutdown_cmd_sx,uploader_shutdown_cmd_rx) = broadcast::channel(1);
 
                                     let uploader_shutdown_cmd_suber = uploader_shutdown_cmd_sx.clone();
                                     // after Concurent create Dataset Uploader, should add meta to DatasetManager
                                     self.set_dataset_uploader_shutdown_cmd_sender(req.dataset_id.clone(), req.dataset_version_id.clone(), uploader_shutdown_cmd_sx);
-                                    self.set_dataset_status(req.dataset_id.as_str(), req.dataset_version_id.as_str(), DataSetStatus::Wait);
 
-                                    let dataset_status_sender = self.dataset_status_sender.clone();
-                                    let all_dataset_sema = self.all_dataset_sema.clone();
+                                    let new_hist_task_result = new_history_task_to_db(req.dataset_id.as_str(), req.dataset_version_id.as_str(), req.dataset_source.as_str());
 
-                                    //Concurent upload futures tree
-                                    tokio::spawn(async move {
-                                        //cause handling error nums >2 is trouble in one fn scope, we should define a new fn like start_upload fn
-                                        let result = start_upload(all_dataset_sema, dataset_status_sender,uploader_shutdown_cmd_suber,uploader_shutdown_cmd_rx,req.clone()).await;
+                                    if new_hist_task_result.is_err() {
+                                        error!("[DatasetManager]: start_upload new_history_task_to_db failed, dataset_id:{},dataset_version_id:{},err:{:?}",
+                                        req.dataset_id,req.dataset_version_id,new_hist_task_result);
+                                    }else{
+                                        let dataset_status_sender = self.dataset_status_sender.clone();
+                                        let all_dataset_sema = self.all_dataset_sema.clone();
 
-                                        debug!("[DatasetManager]: start_upload req:{:?}, result: {:?},",req,result);
-                                    });
+                                        //Concurent upload futures tree
+                                        tokio::spawn(async move {
+                                            //cause handling error nums >2 is trouble in one fn scope, we should define a new fn like start_upload fn
+                                            let result = start_upload(all_dataset_sema, dataset_status_sender,uploader_shutdown_cmd_suber,uploader_shutdown_cmd_rx,req.clone()).await;
 
-                                    let resp = UiResponse{status_code: 0, status_msg:"".to_string(),payload_json:"".to_string()};
+                                            debug!("[DatasetManager]: start_upload req:{:?}, result: {:?},",req,result);
+                                        });
 
-                                    debug!("[DatasetManager]: ui_cmd_collector cmd: {:?},resp:{:?}",cmd,resp);
+                                        let resp = UiResponse{status_code: 0, status_msg:"".to_string(),payload_json:"".to_string()};
 
-                                    if resp_sender.send(resp).is_err(){
-                                        //Do not need process next step, here is Err-Topest-Process Layer!
-                                        error!("[DatasetManager]: can not handle this err, just log!!! ui {} cmd resp channel err", cmd);
+                                        debug!("[DatasetManager]: ui_cmd_collector cmd: {:?},resp:{:?}",cmd,resp);
+
+                                        if resp_sender.send(resp).is_err(){
+                                            //Do not need process next step, here is Err-Topest-Process Layer!
+                                            error!("[DatasetManager]: can not handle this err, just log!!! ui {} cmd resp channel err", cmd);
+                                        }
                                     }
                                 },
                                 std::result::Result::Err(e)=> {
+
+                                    error!("[DatasetManager]: start_upload err:{:?}",e);
 
                                     let resp = UiResponse{status_code: -1, status_msg: e.to_string(),payload_json:"".to_string()};
 
@@ -590,40 +796,13 @@ impl DatasetManager {
                         },
                         "stop_upload" => {
                             debug!("[DatasetManager]: ui_cmd_collector received cmd: {}, request: {:?}",cmd,req_json);
+                            let req_json_result =  serde_json::from_str::<UiStopUploadDatasetRequest>(&req_json);
+                            match req_json_result {
+                                std::result::Result::Ok(req) => {
 
-                            let result =  self.stop_dataset_uploader(req_json).await;
-
-                            match result {
-                                std::result::Result::Ok(_) => {
-
-                                   let resp = UiResponse{status_code: 0, status_msg:"".to_string(),payload_json:"".to_string()};
-
-                                   if resp_sender.send(resp).is_err(){
-                                        //Do not need process next step, here is Err-Topest-Process Layer!
-                                        error!("[DatasetManager]: can not handle this err, just log!!! ui {} cmd resp channel err", cmd);
-                                   }
-                                },
-                                std::result::Result::Err(e)=> {
-
-                                   let resp = UiResponse{status_code: -1, status_msg: e.to_string(),payload_json:"".to_string()};
-
-                                   if resp_sender.send(resp).is_err(){
-                                        //Do not need process next step, here is Err-Topest-Process Layer!
-                                        error!("[DatasetManager]: can not handle this err, just log!!! ui {} cmd resp channel err", cmd);
-                                   }
-                                }
-                            }
-                        },
-                        "terminate_upload" => {
-                            debug!("[DatasetManager]: ui_cmd_collector received cmd: {}, request: {:?}",cmd,req_json);
-
-                            let result =  self.stop_dataset_uploader(req_json.clone()).await;
-                            match result {
-                                std::result::Result::Ok(_) => {
-                                   let result_history = self.del_dataset_status(req_json);
-                                    match result_history {
+                                    let stop_result =  self.stop_dataset_uploader(req).await;
+                                    match stop_result {
                                         std::result::Result::Ok(_) => {
-
                                             let resp = UiResponse{status_code: 0, status_msg:"".to_string(),payload_json:"".to_string()};
 
                                             if resp_sender.send(resp).is_err(){
@@ -633,6 +812,8 @@ impl DatasetManager {
                                         },
                                         std::result::Result::Err(e)=> {
 
+                                            error!("[DatasetManager]: stop_upload err:{:?}",e);
+
                                             let resp = UiResponse{status_code: -1, status_msg: e.to_string(),payload_json:"".to_string()};
 
                                             if resp_sender.send(resp).is_err(){
@@ -640,9 +821,70 @@ impl DatasetManager {
                                                     error!("[DatasetManager]: can not handle this err, just log!!! ui {} cmd resp channel err", cmd);
                                             }
                                         }
-                                   }
+                                    }
+                               },
+                               std::result::Result::Err(e)=> {
+
+                                  error!("[DatasetManager]: stop_upload err:{:?}",e);
+
+                                  let resp = UiResponse{status_code: -1, status_msg: e.to_string(),payload_json:"".to_string()};
+                                  if resp_sender.send(resp).is_err(){
+                                       //Do not need process next step, here is Err-Topest-Process Layer!
+                                       error!("[DatasetManager]: can not handle this err, just log!!! ui {} cmd resp channel err", cmd);
+                                  }
+                               }
+                            }
+                        },
+                        "terminate_upload" => {
+                            debug!("[DatasetManager]: ui_cmd_collector received cmd: {}, request: {:?}",cmd,req_json);
+
+                            let req_json_result =  serde_json::from_str::<UiStopUploadDatasetRequest>(&req_json);
+                            match req_json_result {
+                                std::result::Result::Ok(req) => {
+
+                                    let stop_result =  self.stop_dataset_uploader(req.clone()).await;
+                                    match stop_result {
+                                        std::result::Result::Ok(_) => {
+
+                                            let delete_result = delete_history_task_to_db(req.dataset_id.as_str(),req.dataset_version_id.as_str());
+
+                                            match delete_result {
+                                                std::result::Result::Ok(_) => {
+
+                                                    let resp = UiResponse{status_code: 0, status_msg:"".to_string(),payload_json:"".to_string()};
+
+                                                    if resp_sender.send(resp).is_err(){
+                                                            //Do not need process next step, here is Err-Topest-Process Layer!
+                                                            error!("[DatasetManager]: can not handle this err, just log!!! ui {} cmd resp channel err", cmd);
+                                                    }
+                                                },
+                                                std::result::Result::Err(e)=> {
+
+                                                    error!("[DatasetManager]: terminate_upload err:{:?}",e);
+
+                                                    let resp = UiResponse{status_code: -1, status_msg: e.to_string(),payload_json:"".to_string()};
+
+                                                    if resp_sender.send(resp).is_err(){
+                                                            //Do not need process next step, here is Err-Topest-Process Layer!
+                                                            error!("[DatasetManager]: can not handle this err, just log!!! ui {} cmd resp channel err", cmd);
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        std::result::Result::Err(e)=> {
+
+                                            error!("[DatasetManager]: terminate_upload err:{:?}",e);
+
+                                            let resp = UiResponse{status_code: -1, status_msg: e.to_string(),payload_json:"".to_string()};
+                                            if resp_sender.send(resp).is_err(){
+                                                    //Do not need process next step, here is Err-Topest-Process Layer!
+                                                    error!("[DatasetManager]: can not handle this err, just log!!! ui {} cmd resp channel err", cmd);
+                                            }
+                                        }
+                                    }
                                 },
                                 std::result::Result::Err(e)=> {
+                                   error!("[DatasetManager]: terminate_upload err:{:?}",e);
 
                                    let resp = UiResponse{status_code: -1, status_msg: e.to_string(),payload_json:"".to_string()};
                                    if resp_sender.send(resp).is_err(){
@@ -656,14 +898,12 @@ impl DatasetManager {
                         "get_history" => {
                             debug!("[DatasetManager]: ui_cmd_collector received cmd: {}, request: {:?}",cmd,req_json);
 
-                            let upload_history_map = self.get_history();
+                            let history_task_list_json_result = get_history_task_list_from_db(HISTORY_TASK_LIST_MAX_LENGTH);
 
-                            let upload_history_json_result = serde_json::to_string(&upload_history_map);
-
-                            match upload_history_json_result {
-                                std::result::Result::Ok(upload_history_json) => {
+                            match history_task_list_json_result {
+                                std::result::Result::Ok(history_task_list_json) => {
                                     
-                                    let resp = UiResponse{status_code: 0, status_msg:"".to_string(),payload_json: upload_history_json};
+                                    let resp = UiResponse{status_code: 0, status_msg:"".to_string(),payload_json: history_task_list_json};
 
                                     if resp_sender.send(resp).is_err() {
                                         //Do not need process next step, here is Err-Topest-Process Layer!
@@ -671,6 +911,8 @@ impl DatasetManager {
                                     }
                                 },
                                 std::result::Result::Err(e)=> {
+
+                                    error!("[DatasetManager]: get_history err:{:?}",e);
 
                                     let resp = UiResponse{status_code: -1, status_msg: e.to_string(),payload_json:"".to_string()};
 
@@ -697,24 +939,6 @@ impl DatasetManager {
         }
     }
 
-    fn set_dataset_status(&mut self,dataset_id:&str,dataset_version_id:&str,status:DataSetStatus) {
-        self.upload_dataset_history.insert(format!("{}:{}",dataset_id,dataset_version_id),status);
-    }
-
-    fn set_dataset_status_if_exist(&mut self,dataset_id:&str,dataset_version_id:&str,status:DataSetStatus) {
-        let status_key = format!("{}:{}",dataset_id,dataset_version_id);
-        if self.upload_dataset_history.contains_key(&status_key) {
-            self.upload_dataset_history.insert(status_key,status);
-        }
-    }
-
-    fn del_dataset_status(&mut self,req_json:String) -> Result<()> {
-        let req =  serde_json::from_str::<UiTerminateUploadDatasetRequest>(&req_json)?;
-        self.upload_dataset_history.remove(format!("{}:{}",req.dataset_id.clone(),req.dataset_version_id.clone()).as_str());
-
-        Ok(())
-    }
-
     fn get_dataset_uploader_shutdown_cmd_sender(&self, dataset_id:String,dataset_version_id:String) -> Option<broadcast::Sender<()>> {
         let op_dataset_uploader_shutdown_cmd_sender = self.dataset_uploader_shutdown_cmd_senders.get(format!("{}:{}",dataset_id,dataset_version_id).as_str());
         match op_dataset_uploader_shutdown_cmd_sender {
@@ -731,16 +955,8 @@ impl DatasetManager {
         self.dataset_uploader_shutdown_cmd_senders.insert(format!("{}:{}",dataset_id,dataset_version_id),shutdown_cmd_sender);
     }
 
-    fn get_history(&self) -> HashMap<String, DataSetStatus> {
-       debug!("get_history:{:?}",self.upload_dataset_history); 
-       self.upload_dataset_history.clone()
-    }
+    async fn stop_dataset_uploader(&self, req:UiStopUploadDatasetRequest) -> Result<()> {
 
-
-    async fn stop_dataset_uploader(&self, req_json:String) -> Result<()> {
-
-        let req =  serde_json::from_str::<UiStopUploadDatasetRequest>(&req_json)?;
-        
         let try_uploader_shutdown_sx = self.get_dataset_uploader_shutdown_cmd_sender(req.dataset_id.clone(), req.dataset_version_id.clone());
         
         match try_uploader_shutdown_sx {
