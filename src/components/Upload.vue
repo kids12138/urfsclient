@@ -4,7 +4,6 @@ import { invoke } from "@tauri-apps/api/tauri";
 import { open } from "@tauri-apps/api/dialog";
 import { info, error } from "tauri-plugin-log-api";
 import { message } from "ant-design-vue";
-import { appCacheDir } from "@tauri-apps/api/path";
 import { FileOutlined, FolderOutlined } from "@ant-design/icons-vue";
 import { useStore } from "vuex";
 import config from "../util/config"

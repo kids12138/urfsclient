@@ -21,7 +21,7 @@ watch(
 <template>
   <AppMain>
     <div class="dataset_content">
-      <DataList v-if="show" />
+      <DataList v-if="show"/>
       <DataDetail v-if="!show" />
     </div>
   </AppMain>

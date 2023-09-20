@@ -13,9 +13,7 @@ pub enum UiError {
   #[error(transparent)]
   RecvCmdResp(#[from] oneshot::error::RecvError),
   #[error(transparent)]
-  SerializeRespJson(#[from] serde_json::error::Error),
-  #[error(transparent)]
-  Internal(#[from] anyhow::Error)
+  SerializeRespJson(#[from] serde_json::error::Error)
 }
 
 impl serde::Serialize for UiError {
@@ -39,11 +37,12 @@ pub struct UiResponse{
 pub struct UiStartUploadDatasetRequest{
     pub dataset_id: String,
     pub dataset_version_id: String,
+    pub dataset_cache_dir: String,
     pub dataset_source: String,
     pub server_endpoint: String,
 }
 
-#[derive(Clone,Serialize, Deserialize,Debug)]
+#[derive(Serialize, Deserialize,Debug)]
 pub struct UiStopUploadDatasetRequest{
     pub dataset_id: String,
     pub dataset_version_id: String,

@@ -35,7 +35,7 @@
           <a-textarea v-model:value="desc" class="m-1" disabled />
         </a-tab-pane>
         <a-tab-pane key="2" tab="数据集文件" force-render>
-          <a-table :columns="columns" :data-source="data" :pagination="false"/></a-tab-pane>
+          <a-table :columns="columns" :data-source="data" :pagination="false" /></a-tab-pane>
         <a-tab-pane key="3" tab="副本数据源"></a-tab-pane>
         <a-tab-pane key="4" tab="使用方法">
           <a-textarea v-model:value="use" class="m-1" disabled /></a-tab-pane>
@@ -61,7 +61,7 @@ import { useStore } from "vuex";
 import { message } from "ant-design-vue";
 import config from "../util/config"
 import { http } from "@tauri-apps/api";
-import {getLabel} from "../util/index"
+import { getLabel } from "../util/index"
 const store = useStore();
 const open2 = ref<boolean>(false);
 const open3 = ref<boolean>(false);
@@ -122,7 +122,7 @@ const handleBlur = () => {
   console.log("blur");
 };
 const handleFocus = () => {
-  console.log("focus");
+  getVersion()
 };
 const filterOption = (input: string, option: any) => {
   return option.value.toLowerCase().indexOf(input.toLowerCase()) >= 0;
@@ -257,7 +257,7 @@ async function getDetail(id: String) {
       formState.desc = res.data.dataset.desc
       formState.tags = res.data.dataset.tags
       formState.replica = res.data.dataset.replica
-      
+
     }
   } catch (err: any) {
     message.error("err", err);
@@ -273,11 +273,11 @@ async function getVersion() {
       if (!res.data.versions) {
         res.data.versions = []
       }
-      options.length=0
+      options.length = 0
       res.data.versions.forEach((item: { id: string; name: string; }) => {
         options.push({ value: item.id, label: item.name })
       })
-      value.value=options[0].value
+      value.value = options[0].value
     } else { message.warning("获取版本列表失败"); }
   } catch (err: any) {
 

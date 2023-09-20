@@ -28,7 +28,6 @@
   </div>
 </template>
 <script lang="ts" setup>
-import DetailDialg from "./DetailDialog.vue";
 import { reactive, ref, watch, onMounted } from "vue";
 import { useStore } from "vuex";
 import { useRouter } from "vue-router";
@@ -36,7 +35,6 @@ import config from "../util/config"
 import { http } from "@tauri-apps/api";
 import {getLabel} from "../util/index"
 import { message } from "ant-design-vue";
-const router = useRouter();
 const store = useStore();
 const type = ref(false);
 onMounted(() => {
