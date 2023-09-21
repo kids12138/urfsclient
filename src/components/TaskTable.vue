@@ -61,8 +61,6 @@ import { formatSize } from "../util/index"
 import moment from "moment";
 const timer = ref()
 onMounted(() => {
-    // timer.value = setInterval(get_history, 1000);
-    // sessionStorage.clear()
     get_history()
 })
 onUnmounted(() => {
@@ -190,12 +188,12 @@ async function stop_upload(record: dataType) {
         });
         let Data = JSON.parse(res)
         if (Data.status_code == 0) {
-            message.success("暂停上传成功");
+            message.success("暂停任务成功");
         } else {
-            message.warning("暂停上传失败")
+            message.warning(res)
         }
     } catch (err: any) {
-        message.error("暂停上传出错：", err);
+        message.error("暂停出错：", err);
         // error(`暂停上传出错: ${err}`);
     }
 }
@@ -212,7 +210,7 @@ async function terminate_upload(record: dataType) {
         if (Data.status_code == 0) {
             message.success("删除任务成功");
         } else {
-            message.warning("删除任务失败",Data)
+            message.warning(res)
         }
     } catch (err: any) {
         message.error("删除任务出错：", err);
@@ -224,9 +222,9 @@ async function get_history() {
         info("[ui] click get_history btn");
         let res: any = await invoke("get_history", { req: JSON.stringify({ req: "{}" }) });
         if (typeof res === "string") {
-            let Data = JSON.parse(res)
+            let Data = JSON.parse(res)      
             Data = JSON.parse(Data["payload_json"])
-            if(Data["payload_json"]){
+            if(Data.length!==0){
             data.length = 0
             Data.forEach((item: { dataset_id: string, local_dataset_path: string, create_timestamp: string, dataset_status: any, dataset_version_id: string, local_dataset_size: string }) => {
                 if (typeof item.dataset_status === "string") {
@@ -236,7 +234,7 @@ async function get_history() {
                 }
             })
             getTaskList(data)}
-            else{show.value=true}
+            else{show.value=false}
         }
     } catch (err: any) {
         message.error("获取文件上传历史错误：", err);
@@ -295,6 +293,7 @@ async function updateState() {
         if (typeof res === "string") {
             let Data = JSON.parse(res)
             Data = JSON.parse(Data["payload_json"])
+            if(Data.length!==0){
             interface stateData {
                 id: string,
                 state: string | Object
@@ -329,7 +328,10 @@ async function updateState() {
                 taskList.push(item)
             })
             show.value=false
-            // console.log("过滤后表格", taskList, "当前状态", props.state)
+            console.log("过滤后表格", taskList, "当前状态", props.state)}else{
+                taskList.length=0,
+                show.value=false
+            }
 
         }
     } catch (err: any) {

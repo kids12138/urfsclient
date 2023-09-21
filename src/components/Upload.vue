@@ -4,6 +4,7 @@ import { invoke } from "@tauri-apps/api/tauri";
 import { open } from "@tauri-apps/api/dialog";
 import { info, error } from "tauri-plugin-log-api";
 import { message } from "ant-design-vue";
+import { appCacheDir } from "@tauri-apps/api/path";
 import { FileOutlined, FolderOutlined } from "@ant-design/icons-vue";
 import { useStore } from "vuex";
 import config from "../util/config"
@@ -17,30 +18,38 @@ async function select_upload_fold() {
     directory: true,
   });
   if (typeof selected_folder === "string") {
-    info("[ui] select upload folder :" + selected_folder);
+    // info("[ui] select upload folder :" + selected_folder);
     uploadItemList[0] = { name: selected_folder, isDir: true }
   }
 }
-async function star_upload(source:string) {
+async function star_upload(source: string) {
 
-info(`[ui] star_upload source path:${source}`);
+  // info(`[ui] star_upload source path:${source}`);
 
-try{
-   var resp = await invoke("start_upload", { req :JSON.stringify({
+  try {
+    var resp: any = await invoke("start_upload", {
+      req: JSON.stringify({
         dataset_id: store.state.dataSetId,
-        dataset_version_id: source.substring(source.lastIndexOf('/')+1),
+        dataset_version_id: source.substring(source.lastIndexOf('/') + 1),
         dataset_source: source,
         server_endpoint: config.baseURL
-    })});
-    emit('close')
-    message.success('上传请求已发送');
+      })
+    });
+    let Data = JSON.parse(resp)
+    if (Data.status_code == 0) {
+      emit('close')
+      message.success('上传请求已发送');
+    }
+    else {
+      message.error('上传出错');
+    }
 
-    info(`上传请求返回: ${resp}`);
+    // info(`上传请求返回: ${resp}`);
 
-}catch(err: any){
-    message.error('上传出错：',err);
+  } catch (err: any) {
+    message.error('上传出错：', err);
     error(`上传出错: ${err}`);
-}
+  }
 }
 </script>
 
