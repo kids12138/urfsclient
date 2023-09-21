@@ -2,7 +2,7 @@
     <a-table :columns="columns" :data-source="taskList" :pagination="false" :loading=show>
         <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'id'">
-                <span style="width:180px!important">{{ record.name }}</span>
+                <span style="width:180px!important">{{ record.name ? record.name : "已删除" }}</span>
             </template>
             <template v-if="column.key === 'version'">
                 <span>
@@ -40,7 +40,10 @@
                 <span class="m-l" v-if="props.state == 'Uploading'">
                     <a @click="stop_upload(record)">暂停</a>
                 </span>
-                <span @click="terminate_upload(record)" class="m-l">
+                <span @click="terminate_upload(record)" class="m-l" v-if="props.state !== 'Uploading'">
+                    <a>删除</a>
+                </span>
+                <span @click="terminate_uploading(record)" class="m-l" v-if="props.state === 'Uploading'">
                     <a>删除</a>
                 </span>
                 <span @click="restart_upload(record)" class="m-l" v-if="props.state === 'Stop' || props.state === 'Failed'">
@@ -54,13 +57,15 @@
 import { invoke } from "@tauri-apps/api/tauri";
 import { message, px2remTransformer } from "ant-design-vue";
 import { info, error } from "tauri-plugin-log-api";
-import { onMounted, reactive, onUnmounted, ref } from 'vue'
+import { onMounted, reactive, onUnmounted, ref, getCurrentInstance } from 'vue'
 import config from "../util/config"
 import { http } from "@tauri-apps/api";
 import { formatSize } from "../util/index"
 import moment from "moment";
 const timer = ref()
+const instance = getCurrentInstance();
 onMounted(() => {
+
     get_history()
 })
 onUnmounted(() => {
@@ -149,9 +154,9 @@ interface taskType {
     version: string
 
 }
-let data: dataType[] = [];
-let allTaskData: taskType[] = [];
-let taskData: taskType[] = [];
+const data: dataType[] = reactive([]);
+const allTaskData: taskType[] = reactive([]);
+let taskData: taskType[] = reactive([]);
 const taskList: taskType[] = reactive([]);
 const show = ref<boolean>(true);
 async function restart_upload(record: dataType) {
@@ -168,6 +173,9 @@ async function restart_upload(record: dataType) {
         if (Data.status_code == 0) {
             message.success('上传请求已发送');
             info(`上传请求返回: ${res}`);
+            clearTimeout(timer.value)
+            timer.value = ""
+            timer.value = setInterval(updateState, 1000);
         }
         else {
             message.warning("上传请求失败")
@@ -189,6 +197,9 @@ async function stop_upload(record: dataType) {
         let Data = JSON.parse(res)
         if (Data.status_code == 0) {
             message.success("暂停任务成功");
+            clearTimeout(timer.value)
+            timer.value = ""
+            timer.value = setInterval(updateState, 1000);
         } else {
             message.warning(res)
         }
@@ -197,8 +208,7 @@ async function stop_upload(record: dataType) {
         // error(`暂停上传出错: ${err}`);
     }
 }
-
-async function terminate_upload(record: dataType) {
+async function terminate_uploading(record: dataType) {
     try {
         const res: any = await invoke("terminate_upload", {
             req: JSON.stringify({
@@ -209,6 +219,9 @@ async function terminate_upload(record: dataType) {
         let Data = JSON.parse(res)
         if (Data.status_code == 0) {
             message.success("删除任务成功");
+            clearTimeout(timer.value)
+            timer.value = ""
+            timer.value = setInterval(updateState, 1000);
         } else {
             message.warning(res)
         }
@@ -217,24 +230,49 @@ async function terminate_upload(record: dataType) {
         // error(`终止上传出错: ${err}`);
     }
 }
+async function terminate_upload(record: dataType) {
+    try {
+        const res: any = await invoke("delete_history_task", {
+            req: JSON.stringify({
+                dataset_id: record.id,
+                dataset_version_id: record.version,
+            }),
+        });
+        let Data = JSON.parse(res)
+        if (Data.status_code == 0) {
+            message.success("删除任务成功");
+            clearTimeout(timer.value)
+            timer.value = ""
+            timer.value = setInterval(updateState, 1000);
+        } else {
+            message.warning(res)
+        }
+    } catch (err: any) {
+        message.error("删除出错：", err);
+        // error(`暂停上传出错: ${err}`);
+    }
+}
 async function get_history() {
     try {
         info("[ui] click get_history btn");
         let res: any = await invoke("get_history", { req: JSON.stringify({ req: "{}" }) });
-        if (typeof res === "string") {
-            let Data = JSON.parse(res)      
-            Data = JSON.parse(Data["payload_json"])
-            if(Data.length!==0){
+        let Data = JSON.parse(res)
+        Data = JSON.parse(Data["payload_json"])
+        if (Data.length !== 0) {
             data.length = 0
             Data.forEach((item: { dataset_id: string, local_dataset_path: string, create_timestamp: string, dataset_status: any, dataset_version_id: string, local_dataset_size: string }) => {
                 if (typeof item.dataset_status === "string") {
                     data.push({ id: item.dataset_id, state: item.dataset_status, size: formatSize(item.local_dataset_size.toString()), path: item.local_dataset_path, createDate: moment(parseInt(item.create_timestamp) * 1000).format('YYYY-MM-DD-HH:mm:ss'), version: item.dataset_version_id, })
                 } else {
-                    data.push({ id: item.dataset_id, state: parseFloat(item.dataset_status.Uploading), size: formatSize(item.local_dataset_size.toString()), path: item.local_dataset_path, createDate: moment(parseInt(item.create_timestamp) * 1000).format('YYYY-MM-DD-HH:mm:ss'), version: item.dataset_version_id, })
+                    data.push({ id: item.dataset_id, state: parseInt(item.dataset_status.Uploading), size: formatSize(item.local_dataset_size.toString()), path: item.local_dataset_path, createDate: moment(parseInt(item.create_timestamp) * 1000).format('YYYY-MM-DD-HH:mm:ss'), version: item.dataset_version_id, })
                 }
             })
-            getTaskList(data)}
-            else{show.value=false}
+            getTaskList(data)
+        }
+        else {
+            show.value = false,
+                clearTimeout(timer.value)
+            timer.value = ""
         }
     } catch (err: any) {
         message.error("获取文件上传历史错误：", err);
@@ -260,7 +298,7 @@ const getTaskList = (data: any) => {
                 method: 'GET',
                 timeout: config.timeout
             })
-            if (res.data["status_msg"] == "succeed") {
+            if (res && res.data && res.data["status_msg"] && res.data["status_msg"] == "succeed") {
                 item.name = res.data.dataset.name
             }
 
@@ -293,44 +331,60 @@ async function updateState() {
         if (typeof res === "string") {
             let Data = JSON.parse(res)
             Data = JSON.parse(Data["payload_json"])
-            if(Data.length!==0){
-            interface stateData {
-                id: string,
-                state: string | Object
-            }
-            let stateData: stateData[] = reactive([]);
-            Data.forEach((item: { dataset_id: string, dataset_status: any }) => {
-                if (typeof item.dataset_status === "string") {
-                    if (typeof item.dataset_status === "string") {
-                        stateData.push({ id: item.dataset_id, state: item.dataset_status, })
-                    }
-                } else if (typeof item.dataset_status === "object" && props.state == "Uploading") {
-                    stateData.push({ id: item.dataset_id, state: parseFloat(item.dataset_status.Uploading) })
+            if (Data.length !== 0) {
+                interface stateData {
+                    id: string,
+                    state: string | Object,
+                    version: string
                 }
-            })
-            taskData.forEach((item: { id: string; state: string | Object; }) => {
-                stateData.forEach(Item => {
-                    if (item.id === Item.id) {
-                        item.state = Item.state
+                let stateData: stateData[] = reactive([]);
+                Data.forEach((item: { dataset_id: string, dataset_status: any, dataset_version_id: string }) => {
+                    if (typeof item.dataset_status === "string") {
+                        if (typeof item.dataset_status === "string") {
+                            stateData.push({ id: item.dataset_id, state: item.dataset_status, version: item.dataset_version_id })
+                        }
+                    } else if (typeof item.dataset_status === "object" && props.state == "Uploading") {
+                        stateData.push({ id: item.dataset_id, state: parseInt(item.dataset_status.Uploading), version: item.dataset_version_id })
                     }
                 })
-            })
-            // console.log("过滤前表格", taskData, "当前状态", props.state)
-            taskData= taskData.filter(item => {
-                if (typeof item.state == "string" && item.state === props.state) {
-                   return item
-                } else if (typeof item.state == "number" && props.state === "Uploading") {
-                   return item
+                taskData.forEach((item: { id: string; state: string | Object; version: string }) => {
+                    stateData.forEach(Item => {
+                        if (item.id === Item.id && item.version === Item.version) {
+                            item.state = Item.state
+                        }
+                    })
+                })
+                let idArray: string[] = []
+                stateData.forEach(
+                    item => {
+                        idArray.push(item.id + item.version)
+                    }
+                )
+                console.log(stateData)
+                taskData = taskData.filter(item => {
+                    if (idArray.indexOf(item.id + item.version) !== -1) {
+                        return item
+                    }
+                })
+                taskData = taskData.filter(item => {
+                    if (typeof item.state == "string" && item.state === props.state) {
+                        return item
+                    } else if (typeof item.state == "number" && props.state === "Uploading") {
+                        return item
+                    }
+                })
+                taskList.length = 0
+                taskData.forEach(item => {
+                    taskList.push(item)
+                })
+                show.value = false
+                if (instance && instance.proxy) {
+                    instance.proxy.$forceUpdate()
                 }
-            })
-            taskList.length=0
-            taskData.forEach(item=>{
-                taskList.push(item)
-            })
-            show.value=false
-            console.log("过滤后表格", taskList, "当前状态", props.state)}else{
-                taskList.length=0,
-                show.value=false
+                // updateState()
+            } else {
+                taskList.length=0
+                show.value = false
             }
 
         }
