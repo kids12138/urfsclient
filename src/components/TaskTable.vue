@@ -11,7 +11,7 @@
             </template>
             <template v-if="column.key === 'size'">
                 <span>
-                    {{ record.size === "0" ? "计算中" : record.size }}
+                    {{ record.size==="0"?"计算中":record.size  }}
                 </span>
             </template>
             <template v-if="column.key === 'path'">
@@ -57,6 +57,7 @@ import { message } from "ant-design-vue";
 import { info, error } from "tauri-plugin-log-api";
 import { onMounted, reactive, onUnmounted, ref, getCurrentInstance } from 'vue'
 import config from "../util/config"
+import { formatSize } from "../util/index"
 const timer = ref()
 const instance = getCurrentInstance();
 onMounted(() => {
@@ -283,22 +284,24 @@ async function updateState() {
                 interface stateData {
                     id: string,
                     state: string | Object,
-                    version: string
+                    version: string,
+                    size:string
                 }
                 let stateData: stateData[] = reactive([]);
-                Data.forEach((item: { dataset_id: string, dataset_status: any, dataset_version_id: string }) => {
+                Data.forEach((item: { dataset_id: string, dataset_status: any, dataset_version_id: string,local_dataset_size: string }) => {
                     if (typeof item.dataset_status === "string") {
                         if (typeof item.dataset_status === "string") {
-                            stateData.push({ id: item.dataset_id, state: item.dataset_status, version: item.dataset_version_id })
+                            stateData.push({ id: item.dataset_id, state: item.dataset_status, version: item.dataset_version_id,size:formatSize(item.local_dataset_size.toString()) })
                         }
                     } else if (typeof item.dataset_status === "object" && props.state == "Uploading") {
-                        stateData.push({ id: item.dataset_id, state: parseInt(item.dataset_status.Uploading), version: item.dataset_version_id })
+                        stateData.push({ id: item.dataset_id, state: parseInt(item.dataset_status.Uploading), version: item.dataset_version_id,size:formatSize(item.local_dataset_size.toString()) })
                     }
                 })
-                taskData.forEach((item: { id: string; state: string | Object; version: string }) => {
+                taskData.forEach((item: { id: string; state: string | Object; version: string ; size: string | Number}) => {
                     stateData.forEach(Item => {
                         if (item.id === Item.id && item.version === Item.version) {
                             item.state = Item.state
+                            item.size = Item.size
                         }
                     })
                 })

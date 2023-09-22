@@ -31,6 +31,7 @@ export function getLabel(name: String): resType {
   }
 }
 export function formatSize(s: string): string {
+  console.log(s,"SSSS")
   let size=parseInt(s)
   let data = { number: 0, unit: "" };
   if (!size) return "0";
