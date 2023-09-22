@@ -10,11 +10,8 @@
                 </span>
             </template>
             <template v-if="column.key === 'size'">
-                <span v-if="record.state == 'Init'">
-                    计算中
-                </span>
-                <span v-else>
-                    {{ record.size }}
+                <span>
+                    {{ record.size === "0" ? "计算中" : record.size }}
                 </span>
             </template>
             <template v-if="column.key === 'path'">
@@ -40,7 +37,8 @@
                 <span class="m-l" v-if="props.state == 'Uploading'">
                     <a @click="stop_upload(record)">暂停</a>
                 </span>
-                <span @click="terminate_upload(record)" class="m-l" v-if="props.state !== 'Uploading'">
+                <span @click="terminate_upload(record)" class="m-l"
+                    v-if="props.state !== 'Uploading' && props.state !== 'Init' && props.state !== 'AsyncProcessing'">
                     <a>删除</a>
                 </span>
                 <span @click="terminate_uploading(record)" class="m-l" v-if="props.state === 'Uploading'">
@@ -55,18 +53,25 @@
 </template>
 <script lang="ts" setup>
 import { invoke } from "@tauri-apps/api/tauri";
-import { message, px2remTransformer } from "ant-design-vue";
+import { message } from "ant-design-vue";
 import { info, error } from "tauri-plugin-log-api";
 import { onMounted, reactive, onUnmounted, ref, getCurrentInstance } from 'vue'
 import config from "../util/config"
-import { http } from "@tauri-apps/api";
-import { formatSize } from "../util/index"
-import moment from "moment";
 const timer = ref()
 const instance = getCurrentInstance();
 onMounted(() => {
-
-    get_history()
+    if (props.TaskData.length !== 0) {
+        allTaskData.length=0
+        props.TaskData.forEach((item: any)=>{
+            allTaskData.push(item)
+        })
+        updateState()
+        timer.value = setInterval(updateState, 2000);
+    } else {
+        show.value = false,
+        clearTimeout(timer.value)
+        timer.value = ""
+    }
 })
 onUnmounted(() => {
     clearTimeout(timer.value)
@@ -76,6 +81,10 @@ const props = defineProps({
     state: {
         type: String,
         default: ""
+    },
+    TaskData: {
+        type: Array,
+        default: []
     }
 });
 const columns = [
@@ -154,7 +163,7 @@ interface taskType {
     version: string
 
 }
-const data: dataType[] = reactive([]);
+// const data: dataType[] = reactive([]);
 const allTaskData: taskType[] = reactive([]);
 let taskData: taskType[] = reactive([]);
 const taskList: taskType[] = reactive([]);
@@ -175,7 +184,7 @@ async function restart_upload(record: dataType) {
             info(`上传请求返回: ${res}`);
             clearTimeout(timer.value)
             timer.value = ""
-            timer.value = setInterval(updateState, 1000);
+            timer.value = setInterval(updateState, 2000);
         }
         else {
             message.warning("上传请求失败")
@@ -199,7 +208,7 @@ async function stop_upload(record: dataType) {
             message.success("暂停任务成功");
             clearTimeout(timer.value)
             timer.value = ""
-            timer.value = setInterval(updateState, 1000);
+            timer.value = setInterval(updateState, 2000);
         } else {
             message.warning(res)
         }
@@ -221,7 +230,7 @@ async function terminate_uploading(record: dataType) {
             message.success("删除任务成功");
             clearTimeout(timer.value)
             timer.value = ""
-            timer.value = setInterval(updateState, 1000);
+            timer.value = setInterval(updateState, 2000);
         } else {
             message.warning(res)
         }
@@ -243,7 +252,7 @@ async function terminate_upload(record: dataType) {
             message.success("删除任务成功");
             clearTimeout(timer.value)
             timer.value = ""
-            timer.value = setInterval(updateState, 1000);
+            timer.value = setInterval(updateState, 2000);
         } else {
             message.warning(res)
         }
@@ -252,67 +261,6 @@ async function terminate_upload(record: dataType) {
         // error(`暂停上传出错: ${err}`);
     }
 }
-async function get_history() {
-    try {
-        info("[ui] click get_history btn");
-        let res: any = await invoke("get_history", { req: JSON.stringify({ req: "{}" }) });
-        let Data = JSON.parse(res)
-        Data = JSON.parse(Data["payload_json"])
-        if (Data.length !== 0) {
-            data.length = 0
-            Data.forEach((item: { dataset_id: string, local_dataset_path: string, create_timestamp: string, dataset_status: any, dataset_version_id: string, local_dataset_size: string }) => {
-                if (typeof item.dataset_status === "string") {
-                    data.push({ id: item.dataset_id, state: item.dataset_status, size: formatSize(item.local_dataset_size.toString()), path: item.local_dataset_path, createDate: moment(parseInt(item.create_timestamp) * 1000).format('YYYY-MM-DD-HH:mm:ss'), version: item.dataset_version_id, })
-                } else {
-                    data.push({ id: item.dataset_id, state: parseInt(item.dataset_status.Uploading), size: formatSize(item.local_dataset_size.toString()), path: item.local_dataset_path, createDate: moment(parseInt(item.create_timestamp) * 1000).format('YYYY-MM-DD-HH:mm:ss'), version: item.dataset_version_id, })
-                }
-            })
-            getTaskList(data)
-        }
-        else {
-            show.value = false,
-                clearTimeout(timer.value)
-            timer.value = ""
-        }
-    } catch (err: any) {
-        message.error("获取文件上传历史错误：", err);
-        console.log(err, "err")
-    }
-}
-const getTaskList = (data: any) => {
-    if (!data) {
-        data = []
-    }
-    data.forEach(async (item: {
-        id: string,
-        name: string,
-        size: string | Number,
-        path: string,
-        createDate: string,
-        version: string,
-        state: string | Number | any,
-    }) => {
-        const datasetId = item.id
-        try {
-            const res: any = await http.fetch(config.baseURL + '/api/v1/dataset/' + datasetId, {
-                method: 'GET',
-                timeout: config.timeout
-            })
-            if (res && res.data && res.data["status_msg"] && res.data["status_msg"] == "succeed") {
-                item.name = res.data.dataset.name
-            }
-
-        } catch (err: any) {
-            message.error("err", err);
-        }
-    })
-    allTaskData.length = 0
-    data.forEach((item: any) => {
-        allTaskData.push(item)
-    })
-    timer.value = setInterval(updateState, 1000);
-
-};
 async function updateState() {
     taskData.length = 0
     allTaskData.forEach((item: any) => {
@@ -360,14 +308,13 @@ async function updateState() {
                         idArray.push(item.id + item.version)
                     }
                 )
-                console.log(stateData)
                 taskData = taskData.filter(item => {
                     if (idArray.indexOf(item.id + item.version) !== -1) {
                         return item
                     }
                 })
                 taskData = taskData.filter(item => {
-                    if (typeof item.state == "string" && item.state === props.state) {
+                    if (typeof item.state == "string" && props.state.indexOf(item.state) != -1) {
                         return item
                     } else if (typeof item.state == "number" && props.state === "Uploading") {
                         return item
@@ -381,9 +328,8 @@ async function updateState() {
                 if (instance && instance.proxy) {
                     instance.proxy.$forceUpdate()
                 }
-                // updateState()
             } else {
-                taskList.length=0
+                taskList.length = 0
                 show.value = false
             }
 

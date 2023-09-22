@@ -52,7 +52,6 @@
 import type { CSSProperties } from "vue";
 import { watch, ref } from "vue";
 import { OrderedListOutlined, AppstoreOutlined } from "@ant-design/icons-vue";
-import type { SelectProps } from "ant-design-vue";
 import DatasetCard from "../components/DatasetCard.vue";
 import DatasetTable from "../components/DatasetTable.vue";
 import { useStore } from "vuex";

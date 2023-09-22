@@ -45,11 +45,11 @@
     </a-layout>
     <operateDialg v-if="open1" @closeDatasetDialg="closeDatasetDialg" title="创建数据集" />
     <settingDialg v-if="open2" @closeSettingDialg="closeSettingDialg" />
-    <taskManagerDialg v-if="open3" @closeTaskManagerDialg="closeTaskManagerDialg" />
+    <taskManagerDialg v-if="open3" @closeTaskManagerDialg="closeTaskManagerDialg" :allTaskData="allTaskData"/>
   </a-layout>
 </template>
 <script lang="ts" setup>
-import { ref } from "vue";
+import { ref, reactive } from "vue";
 const activeKey = ref("1");
 import { UserOutlined } from "@ant-design/icons-vue";
 import type { MenuProps } from "ant-design-vue";
@@ -59,6 +59,33 @@ import operateDialg from "../components/OperateDatasetDialg.vue";
 import settingDialg from "../components/SystemSettingDialg.vue";
 import taskManagerDialg from "../components/TaskManagerDialg.vue";
 import { useStore } from "vuex";
+import { invoke } from "@tauri-apps/api/tauri";
+import config from "../util/config"
+import { info } from "tauri-plugin-log-api";
+import { formatSize } from "../util/index"
+import moment from "moment";
+import { http } from "@tauri-apps/api";
+interface dataType {
+  id: string,
+  state: string | Number | any,
+  size: string | Number,
+  path: string,
+  createDate: string,
+  version: string
+
+}
+interface taskType {
+  id: string,
+  state: string | Number | any,
+  name: string | null,
+  size: string | Number,
+  path: string,
+  createDate: string,
+  version: string
+
+}
+const data: dataType[] = reactive([]);
+const allTaskData: taskType[] = reactive([]);
 const router = useRouter();
 const store = useStore();
 const open1 = ref<boolean>(false);
@@ -89,10 +116,69 @@ const closeTaskManagerDialg = (val: boolean) => {
   open3.value = val;
 };
 const openTaskManager = () => {
-  open3.value = true;
+  get_history()
+
 };
 const showList = () => {
   store.commit("changeDataPage", "list");
+};
+async function get_history() {
+  try {
+    info("[ui] click get_history btn");
+    let res: any = await invoke("get_history", { req: JSON.stringify({ req: "{}" }) });
+    let Data = JSON.parse(res)
+    Data = JSON.parse(Data["payload_json"])
+    if (Data.length !== 0) {
+      data.length = 0
+      Data.forEach((item: { dataset_id: string, local_dataset_path: string, create_timestamp: string, dataset_status: any, dataset_version_id: string, local_dataset_size: string }) => {
+        if (typeof item.dataset_status === "string") {
+          data.push({ id: item.dataset_id, state: item.dataset_status, size: formatSize(item.local_dataset_size.toString()), path: item.local_dataset_path, createDate: moment(parseInt(item.create_timestamp) * 2000).format('YYYY-MM-DD-HH:mm:ss'), version: item.dataset_version_id, })
+        } else {
+          data.push({ id: item.dataset_id, state: parseInt(item.dataset_status.Uploading), size: formatSize(item.local_dataset_size.toString()), path: item.local_dataset_path, createDate: moment(parseInt(item.create_timestamp) * 2000).format('YYYY-MM-DD-HH:mm:ss'), version: item.dataset_version_id, })
+        }
+      })
+      getTaskList(data)
+    }else{
+      allTaskData.length=0
+      open3.value = true;
+    }
+  } catch (err: any) {
+    message.error("获取文件上传历史错误：", err);
+    console.log(err, "err")
+  }
+}
+const getTaskList = (data: any) => {
+  if (!data) {
+    data = []
+  }
+  data.forEach(async (item: {
+    id: string,
+    name: string,
+    size: string | Number,
+    path: string,
+    createDate: string,
+    version: string,
+    state: string | Number | any,
+  }) => {
+    const datasetId = item.id
+    try {
+      const res: any = await http.fetch(config.baseURL + '/api/v1/dataset/' + datasetId, {
+        method: 'GET',
+        timeout: config.timeout
+      })
+      if (res && res.data && res.data["status_msg"] && res.data["status_msg"] == "succeed") {
+        item.name = res.data.dataset.name
+      }
+
+    } catch (err: any) {
+      message.error("err", err);
+    }
+  })
+  allTaskData.length = 0
+  data.forEach((item: any) => {
+    allTaskData.push(item)
+  })
+  open3.value = true;
 };
 </script>
 <style scoped>
@@ -167,4 +253,5 @@ const showList = () => {
 
 .min-width {
   min-width: 350px;
-}</style>
+}
+</style>

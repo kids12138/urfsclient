@@ -33,7 +33,7 @@ export function getLabel(name: String): resType {
 export function formatSize(s: string): string {
   let size=parseInt(s)
   let data = { number: 0, unit: "" };
-  if (!size) return "";
+  if (!size) return "0";
   var num = 1024.0; //byte
   if (size < num) {
     data.number = size;
