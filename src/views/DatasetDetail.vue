@@ -160,44 +160,44 @@ interface DataItem {
 const data: DataItem[] = [
   {
     key: 1,
-    name: "文件夹",
+    name: "folder",
     size: 60,
     children: [
       {
         key: 11,
-        name: "文件一",
+        name: "file",
         size: 42,
       },
       {
         key: 12,
-        name: "文件二",
+        name: "file",
         size: 30,
         children: [
           {
             key: 121,
-            name: "文件三",
+            name: "file",
             size: 16,
           },
         ],
       },
       {
         key: 13,
-        name: "文件四",
+        name: "file",
         size: 72,
         children: [
           {
             key: 131,
-            name: "文件五",
+            name: "file",
             size: 42,
             children: [
               {
                 key: 1311,
-                name: "文件六",
+                name: "file",
                 size: 25,
               },
               {
                 key: 1312,
-                name: "文件七",
+                name: "file",
                 size: 18,
               },
             ],
@@ -208,7 +208,7 @@ const data: DataItem[] = [
   },
   {
     key: 2,
-    name: "文件夹",
+    name: "file",
     size: 32,
   },
 ];

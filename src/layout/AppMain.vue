@@ -132,9 +132,9 @@ async function get_history() {
       data.length = 0
       Data.forEach((item: { dataset_id: string, local_dataset_path: string, create_timestamp: string, dataset_status: any, dataset_version_id: string, local_dataset_size: string }) => {
         if (typeof item.dataset_status === "string") {
-          data.push({ id: item.dataset_id, state: item.dataset_status, size: formatSize(item.local_dataset_size.toString()), path: item.local_dataset_path, createDate: moment(parseInt(item.create_timestamp) * 2000).format('YYYY-MM-DD-HH:mm:ss'), version: item.dataset_version_id, })
+          data.push({ id: item.dataset_id, state: item.dataset_status, size: formatSize(item.local_dataset_size.toString()), path: item.local_dataset_path, createDate: moment(parseInt(item.create_timestamp) * 1000).format('YYYY-MM-DD-HH:mm:ss'), version: item.dataset_version_id, })
         } else {
-          data.push({ id: item.dataset_id, state: parseInt(item.dataset_status.Uploading), size: formatSize(item.local_dataset_size.toString()), path: item.local_dataset_path, createDate: moment(parseInt(item.create_timestamp) * 2000).format('YYYY-MM-DD-HH:mm:ss'), version: item.dataset_version_id, })
+          data.push({ id: item.dataset_id, state: parseInt(item.dataset_status.Uploading), size: formatSize(item.local_dataset_size.toString()), path: item.local_dataset_path, createDate: moment(parseInt(item.create_timestamp) * 1000).format('YYYY-MM-DD-HH:mm:ss'), version: item.dataset_version_id, })
         }
       })
       getTaskList(data)
