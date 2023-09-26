@@ -11,7 +11,7 @@
             </template>
             <template v-if="column.key === 'size'">
                 <span>
-                    {{ record.size==="0"?"计算中":record.size  }}
+                    {{ record.size === "0" ? "计算中" : record.size }}
                 </span>
             </template>
             <template v-if="column.key === 'path'">
@@ -45,7 +45,7 @@
                     <a>删除</a>
                 </span>
                 <span @click="restart_upload(record)" class="m-l" v-if="props.state === 'Stop' || props.state === 'Failed'">
-                    <a>重新上传</a>
+                    <a>继续上传</a>
                 </span>
             </template>
         </template>
@@ -56,21 +56,22 @@ import { invoke } from "@tauri-apps/api/tauri";
 import { message } from "ant-design-vue";
 import { info, error } from "tauri-plugin-log-api";
 import { onMounted, reactive, onUnmounted, ref, getCurrentInstance } from 'vue'
-import config from "../util/config"
-import { formatSize } from "../util/index"
+import config from "../util/config";
+import { formatSize } from "../util/index";
+import moment from "moment";
 const timer = ref()
 const instance = getCurrentInstance();
 onMounted(() => {
     if (props.TaskData.length !== 0) {
-        allTaskData.length=0
-        props.TaskData.forEach((item: any)=>{
+        allTaskData.length = 0
+        props.TaskData.forEach((item: any) => {
             allTaskData.push(item)
         })
         updateState()
         timer.value = setInterval(updateState, 2000);
     } else {
         show.value = false,
-        clearTimeout(timer.value)
+            clearTimeout(timer.value)
         timer.value = ""
     }
 })
@@ -185,6 +186,7 @@ async function restart_upload(record: dataType) {
             info(`上传请求返回: ${res}`);
             clearTimeout(timer.value)
             timer.value = ""
+            updateState()
             timer.value = setInterval(updateState, 2000);
         }
         else {
@@ -209,6 +211,7 @@ async function stop_upload(record: dataType) {
             message.success("暂停任务成功");
             clearTimeout(timer.value)
             timer.value = ""
+            updateState()
             timer.value = setInterval(updateState, 2000);
         } else {
             message.warning(res)
@@ -231,6 +234,7 @@ async function terminate_uploading(record: dataType) {
             message.success("删除任务成功");
             clearTimeout(timer.value)
             timer.value = ""
+            updateState()
             timer.value = setInterval(updateState, 2000);
         } else {
             message.warning(res)
@@ -253,6 +257,7 @@ async function terminate_upload(record: dataType) {
             message.success("删除任务成功");
             clearTimeout(timer.value)
             timer.value = ""
+            updateState()
             timer.value = setInterval(updateState, 2000);
         } else {
             message.warning(res)
@@ -281,32 +286,36 @@ async function updateState() {
             let Data = JSON.parse(res)
             Data = JSON.parse(Data["payload_json"])
             if (Data.length !== 0) {
-                interface stateData {
+                interface infoData {
                     id: string,
                     state: string | Object,
                     version: string,
-                    size:string
+                    size: string,
+                    path: string,
+                    createDate: string,
                 }
-                let stateData: stateData[] = reactive([]);
-                Data.forEach((item: { dataset_id: string, dataset_status: any, dataset_version_id: string,local_dataset_size: string }) => {
+                let infoData: infoData[] = reactive([]);
+                Data.forEach((item: { dataset_id: string, dataset_status: any, dataset_version_id: string, local_dataset_size: string, local_dataset_path: string, create_timestamp: string }) => {
                     if (typeof item.dataset_status === "string") {
                         if (typeof item.dataset_status === "string") {
-                            stateData.push({ id: item.dataset_id, state: item.dataset_status, version: item.dataset_version_id,size:formatSize(item.local_dataset_size.toString()) })
+                            infoData.push({ id: item.dataset_id, state: item.dataset_status, version: item.dataset_version_id, size: formatSize(item.local_dataset_size.toString()), path: item.local_dataset_path, createDate: moment(parseInt(item.create_timestamp) * 1000).format('YYYY-MM-DD-HH:mm:ss') })
                         }
                     } else if (typeof item.dataset_status === "object" && props.state == "Uploading") {
-                        stateData.push({ id: item.dataset_id, state: parseInt(item.dataset_status.Uploading), version: item.dataset_version_id,size:formatSize(item.local_dataset_size.toString()) })
+                        infoData.push({ id: item.dataset_id, state: parseInt(item.dataset_status.Uploading), version: item.dataset_version_id, size: formatSize(item.local_dataset_size.toString()), path: item.local_dataset_path, createDate: moment(parseInt(item.create_timestamp) * 1000).format('YYYY-MM-DD-HH:mm:ss') })
                     }
                 })
-                taskData.forEach((item: { id: string; state: string | Object; version: string ; size: string | Number}) => {
-                    stateData.forEach(Item => {
+                taskData.forEach((item: { id: string; state: string | Object; version: string; size: string | Number,path:string,createDate:string }) => {
+                    infoData.forEach(Item => {
                         if (item.id === Item.id && item.version === Item.version) {
                             item.state = Item.state
                             item.size = Item.size
+                            item.path=Item.path
+                            item.createDate=Item.createDate
                         }
                     })
                 })
                 let idArray: string[] = []
-                stateData.forEach(
+                infoData.forEach(
                     item => {
                         idArray.push(item.id + item.version)
                     }
