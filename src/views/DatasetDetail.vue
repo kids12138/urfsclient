@@ -17,6 +17,7 @@
           </a-row>
         </a-col>
         <a-col :span="12"><a-space warp>
+            <a-button type="primary" @click="createVersion">创建版本</a-button>
             <a-button type="primary" @click="showUpload" v-if="show">上传</a-button>
             <a-button type="primary" @click="shareConfirm" disabled>分享</a-button>
             <a-button type="primary" @click="showDeleteConfirm">删除</a-button>
@@ -28,6 +29,7 @@
     <p>
       <a-select v-model:value="value" placeholder="Select a person" style="width: 200px" :options="options"
         @focus="handleFocus" @blur="handleBlur" @change="handleChange()"></a-select>
+      <a-button type="primary" @click="deleteVersion" class="mt-l">删除版本</a-button>
     </p>
     <p>
       <a-tabs v-model:activeKey="activeKey">
@@ -46,11 +48,18 @@
       :ok-button-props="{ style: { display: 'none' } }" :cancel-button-props="{ style: { display: 'none' } }">
       <upload @close="hideModal"></upload>
     </a-modal>
+    <a-modal v-model:open="open4" title="创建版本" @ok="confirm">
+      <a-form ref="formRef" :model="versionState" :rules="rules">
+        <a-form-item label="版本名称" name="version" ref="version">
+          <a-input v-model:value="versionState.version" onkeyup="value=value.replace(/[, ]/g,'')" placeholder="只能输入英文和数字"
+            @input="getInput" />
+        </a-form-item>
+      </a-form>
+    </a-modal>
   </div>
 </template>
 <script lang="ts" setup>
 import { ref } from "vue";
-import type { SelectProps } from "ant-design-vue";
 import { ExclamationCircleOutlined } from "@ant-design/icons-vue";
 import { createVNode, watch, onMounted, reactive } from "vue";
 import type { UnwrapRef } from "vue";
@@ -61,19 +70,26 @@ import { useStore } from "vuex";
 import { message } from "ant-design-vue";
 import config from "../util/config"
 import { http } from "@tauri-apps/api";
-import { getLabel } from "../util/index"
+import { getLabel } from "../util/index";
+import type { Rule } from 'ant-design-vue/es/form';
 const store = useStore();
 const open2 = ref<boolean>(false);
 const open3 = ref<boolean>(false);
+const open4 = ref<boolean>(false);
 const activeKey = ref("1");
 const show = ref(false);
 const id = ref<string>("")
+const version = ref<string>("");
+const formRef = ref();
 interface FormState {
   name: string;
   desc: string;
   tags: [];
   replica: number;
   id: string
+}
+interface VersionState {
+  version: string
 }
 const formState: UnwrapRef<FormState> = reactive({
   name: "",
@@ -82,6 +98,15 @@ const formState: UnwrapRef<FormState> = reactive({
   replica: 0,
   id: ""
 });
+const versionState: UnwrapRef<VersionState> = reactive({
+  version: ""
+});
+const rules: Record<string, Rule[]> = {
+  version: [
+    { required: true, message: '版本号不能为空', trigger: 'change' },
+
+  ],
+};
 onMounted(() => {
   id.value = store.state.dataSetId
   getDetail(id.value)
@@ -100,13 +125,7 @@ const edite = () => {
 const emit = defineEmits<{
   (event: "closeDetailDialg", val: boolean): void;
 }>();
-const handleOk = (e: MouseEvent) => {
-  emit("closeDetailDialg", false);
-};
-const handleCancel = (e: MouseEvent) => {
-  emit("closeDetailDialg", false);
-};
-const hideModal = (e: MouseEvent) => {
+const hideModal = () => {
   open3.value = false;
 };
 interface optionType {
@@ -124,9 +143,6 @@ const handleBlur = () => {
 const handleFocus = () => {
   getVersion()
 };
-const filterOption = (input: string, option: any) => {
-  return option.value.toLowerCase().indexOf(input.toLowerCase()) >= 0;
-};
 const closeDatasetDialg = (val: boolean) => {
   open2.value = val;
   getDetail(id.value)
@@ -134,6 +150,21 @@ const closeDatasetDialg = (val: boolean) => {
 const showUpload = () => {
   open3.value = true;
 };
+const createVersion = () => {
+  versionState.version=""
+  open4.value = true;
+};
+const confirm = () => {
+  formRef.value
+    .validate()
+    .then(() => {
+      addVersion(versionState.version)
+    })
+    .catch(() => {
+
+    });
+
+}
 const value = ref("");
 const desc = ref("这是一段描述");
 const use = ref("这是一段使用方法");
@@ -263,11 +294,15 @@ async function getDetail(id: String) {
     message.error("err", err);
   }
 }
-async function getVersion() {
+async function getVersion(getLast?:string) {
   try {
     const res: any = await http.fetch(config.baseURL + '/api/v1/dataset/' + id.value + "/versions", {
       method: 'GET',
-      timeout: config.timeout
+      timeout: config.timeout,
+      query: {
+        page_index: "0",
+        page_size: "100"
+      }
     })
     if (res.data.status_msg === "Succeed") {
       if (!res.data.versions) {
@@ -277,7 +312,13 @@ async function getVersion() {
       res.data.versions.forEach((item: { id: string; name: string; }) => {
         options.push({ value: item.id, label: item.name })
       })
-      value.value = options[0].value
+      if(getLast){
+        value.value = options[options.length-1].value
+        store.commit("changeDataSetVersion", value);
+      }else{
+        value.value = options[0].value
+      }
+     
     } else { message.warning("获取版本列表失败"); }
   } catch (err: any) {
 
@@ -285,18 +326,78 @@ async function getVersion() {
   }
 }
 async function deleteDataset(id: String) {
-  const res: any = await http.fetch(config.baseURL + '/api/v1/dataset/' + id, {
-    method: 'DELETE',
-    timeout: config.timeout
-  })
-  if (res.data.status_msg === "succeed") {
-    message.success("删除数据集成功");
-    store.commit("changedataSetNumber");
-    store.commit("changeDataPage", "list");
-  } else {
-    message.warning("删除数据集失败");
+  try {
+    const res: any = await http.fetch(config.baseURL + '/api/v1/dataset/' + id, {
+      method: 'DELETE',
+      timeout: config.timeout
+    })
+    if (res.data.status_msg === "succeed") {
+      message.success("删除数据集成功");
+      store.commit("changedataSetNumber");
+      store.commit("changeDataPage", "list");
+    } else {
+      message.warning("删除数据集失败");
+    }
+  } catch (err: any) {
+
+    message.error("err", err);
   }
 }
+async function addVersion(version: String) {
+  const body = http.Body.form({
+    version_id: versionState.version.toString()
+  });
+  try {
+    const res: any = await http.fetch(config.baseURL + '/api/v1/dataset/' + id.value + "/version", {
+      method: 'POST',
+      body: body,
+      timeout: config.timeout
+    })
+    if (res.data.status_msg === "Succeed") {
+      message.success("创建版本成功");
+      getVersion("getLast")
+      open4.value = false
+
+    } else {
+      message.warning("创建版本失败");
+    }
+  } catch (err: any) {
+
+    message.error("err", err);
+  }
+}
+async function deleteVersion() {
+  if(value.value===""){
+    message.warning("请选择版本");
+    return
+  }
+  if(value.value==="default"){
+    message.warning("不能删除默认版本");
+    return
+  }
+  try {
+    const res: any = await http.fetch(config.baseURL + '/api/v1/dataset/' + id.value +'/version/'+ value.value, {
+      method: 'DELETE',
+      timeout: config.timeout
+    })
+    if (res.data.status_msg === "Succeed") {
+      message.success("删除版本成功");
+      getVersion()
+
+    } else {
+      message.warning("删除版本失败");
+      getVersion()
+    }
+  } catch (err: any) {
+
+    message.error("err", err);
+  }
+}
+const getInput = (obj: any) => {
+  obj.target.value = obj.target.value.replace(/[^\a-\z\A-\Z0-9\_]/g, "");
+  versionState.version = obj.target.value;
+};
+
 </script>
 <style scoped>
 .m-1 {
@@ -310,5 +411,9 @@ async function deleteDataset(id: String) {
 
 :deep(.ant-space) {
   float: right;
+}
+
+.mt-l {
+  margin-left: 10px;
 }
 </style>

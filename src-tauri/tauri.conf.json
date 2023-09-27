@@ -12,6 +12,7 @@
   },
   "tauri": {
     "allowlist": {
+      "all": false,
       "http":{
         "all": true,
         "request": true,
@@ -22,7 +23,7 @@
       },
       "fs": {
         "all": false,
-        "scope": ["$APPDATA/*", "$APPCACHE/*"],
+        "scope": ["$APPDATA/*","$APPCACHE/*"],
         "readFile": true,
         "writeFile": true,
         "removeFile": true,
@@ -36,11 +37,11 @@
         "open": true
       },
       "dialog": {
-        "all": true,
-        "ask": true,
+        "all": true, 
+        "ask": true, 
         "confirm": true,
         "message": true,
-        "open": true,
+        "open": true, 
         "save": true
       }
     },

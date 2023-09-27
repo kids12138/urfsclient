@@ -45,7 +45,7 @@
     </a-layout>
     <operateDialg v-if="open1" @closeDatasetDialg="closeDatasetDialg" title="创建数据集" />
     <settingDialg v-if="open2" @closeSettingDialg="closeSettingDialg" />
-    <taskManagerDialg v-if="open3" @closeTaskManagerDialg="closeTaskManagerDialg" :allTaskData="allTaskData"/>
+    <taskManagerDialg v-if="open3" @closeTaskManagerDialg="closeTaskManagerDialg" :allTaskData="allTaskData" />
   </a-layout>
 </template>
 <script lang="ts" setup>
@@ -138,8 +138,8 @@ async function get_history() {
         }
       })
       getTaskList(data)
-    }else{
-      allTaskData.length=0
+    } else {
+      allTaskData.length = 0
       open3.value = true;
     }
   } catch (err: any) {
@@ -161,6 +161,7 @@ const getTaskList = (data: any) => {
     state: string | Number | any,
   }) => {
     const datasetId = item.id
+    const dataseVersion = item.version
     try {
       const res: any = await http.fetch(config.baseURL + '/api/v1/dataset/' + datasetId, {
         method: 'GET',
@@ -168,6 +169,17 @@ const getTaskList = (data: any) => {
       })
       if (res && res.data && res.data["status_msg"] && res.data["status_msg"] == "succeed") {
         item.name = res.data.dataset.name
+      }
+      if (dataseVersion) {
+        const res2: any = await http.fetch(config.baseURL + '/api/v1/dataset/' + datasetId + "/version/" + dataseVersion, {
+          method: 'GET',
+          timeout: config.timeout
+        })
+        if (res2.status === 422) {
+          item.version = "已删除"
+        }
+      } else {
+        item.version = "已删除"
       }
 
     } catch (err: any) {

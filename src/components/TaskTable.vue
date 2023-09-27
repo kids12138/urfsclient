@@ -61,6 +61,7 @@ import { formatSize } from "../util/index";
 import moment from "moment";
 const timer = ref()
 const instance = getCurrentInstance();
+const allow = ref<boolean>(true);
 onMounted(() => {
     if (props.TaskData.length !== 0) {
         allTaskData.length = 0
@@ -171,58 +172,72 @@ let taskData: taskType[] = reactive([]);
 const taskList: taskType[] = reactive([]);
 const show = ref<boolean>(true);
 async function restart_upload(record: dataType) {
-    try {
-        var res: any = await invoke("start_upload", {
-            req: JSON.stringify({
-                dataset_id: record.id,
-                dataset_version_id: record.version,
-                dataset_source: record.path,
-                server_endpoint: config.baseURL
-            })
-        });
-        let Data = JSON.parse(res)
-        if (Data.status_code == 0) {
-            message.success('上传请求已发送');
-            info(`上传请求返回: ${res}`);
-            clearTimeout(timer.value)
-            timer.value = ""
-            updateState()
-            timer.value = setInterval(updateState, 2000);
-        }
-        else {
-            message.warning("上传请求失败")
-        }
+    if (allow.value === true) {
+        try {
+            allow.value = false
+            var res: any = await invoke("start_upload", {
+                req: JSON.stringify({
+                    dataset_id: record.id,
+                    dataset_version_id: record.version,
+                    dataset_source: record.path,
+                    server_endpoint: config.baseURL
+                })
+            });
+            let Data = JSON.parse(res)
+            if (Data.status_code == 0) {
+                message.success('上传请求已发送');
+                allow.value = true
+                info(`上传请求返回: ${res}`);
+                clearTimeout(timer.value)
+                timer.value = ""
+                updateState()
+                timer.value = setInterval(updateState, 2000);
+            }
+            else {
+                message.warning("上传请求失败")
+            }
 
-    } catch (err: any) {
-        message.error('上传出错：', err);
-        error(`上传出错: ${err}`);
+        } catch (err: any) {
+            message.error('上传出错：', err);
+            error(`上传出错: ${err}`);
+            allow.value = true
+        }
+    } else {
+        message.warning("请求发送中")
     }
 }
 async function stop_upload(record: dataType) {
-    try {
-        const res: any = await invoke("stop_upload", {
-            req: JSON.stringify({
-                dataset_id: record.id,
-                dataset_version_id: record.version,
-            }),
-        });
-        let Data = JSON.parse(res)
-        if (Data.status_code == 0) {
-            message.success("暂停任务成功");
-            clearTimeout(timer.value)
-            timer.value = ""
-            updateState()
-            timer.value = setInterval(updateState, 2000);
-        } else {
-            message.warning(res)
+    if (allow.value === true) {
+        try {
+            allow.value = false
+            const res: any = await invoke("stop_upload", {
+                req: JSON.stringify({
+                    dataset_id: record.id,
+                    dataset_version_id: record.version,
+                }),
+            });
+            let Data = JSON.parse(res)
+            if (Data.status_code == 0) {
+                message.success("暂停任务成功");
+                allow.value = true;
+                clearTimeout(timer.value)
+                timer.value = ""
+                updateState()
+                timer.value = setInterval(updateState, 2000);
+            } else {
+                message.warning(res)
+            }
+        } catch (err: any) {
+            message.error("暂停出错：", err);
+            allow.value = true
+            // error(`暂停上传出错: ${err}`);
         }
-    } catch (err: any) {
-        message.error("暂停出错：", err);
-        // error(`暂停上传出错: ${err}`);
-    }
+    } else { message.warning("请求发送中") }
 }
 async function terminate_uploading(record: dataType) {
+    if (allow.value === true) {
     try {
+        allow.value =false;
         const res: any = await invoke("terminate_upload", {
             req: JSON.stringify({
                 dataset_id: record.id,
@@ -232,6 +247,7 @@ async function terminate_uploading(record: dataType) {
         let Data = JSON.parse(res)
         if (Data.status_code == 0) {
             message.success("删除任务成功");
+            allow.value = true
             clearTimeout(timer.value)
             timer.value = ""
             updateState()
@@ -241,11 +257,16 @@ async function terminate_uploading(record: dataType) {
         }
     } catch (err: any) {
         message.error("删除任务出错：", err);
+        allow.value = true
         // error(`终止上传出错: ${err}`);
+    }}else{
+        message.warning("请求发送中")
     }
 }
 async function terminate_upload(record: dataType) {
+    if (allow.value === true) {
     try {
+        allow.value=false
         const res: any = await invoke("delete_history_task", {
             req: JSON.stringify({
                 dataset_id: record.id,
@@ -255,6 +276,7 @@ async function terminate_upload(record: dataType) {
         let Data = JSON.parse(res)
         if (Data.status_code == 0) {
             message.success("删除任务成功");
+            allow.value=true
             clearTimeout(timer.value)
             timer.value = ""
             updateState()
@@ -264,7 +286,10 @@ async function terminate_upload(record: dataType) {
         }
     } catch (err: any) {
         message.error("删除出错：", err);
+        allow.value = true
         // error(`暂停上传出错: ${err}`);
+    }}else{
+        message.warning("请求发送中")
     }
 }
 async function updateState() {
@@ -304,13 +329,13 @@ async function updateState() {
                         infoData.push({ id: item.dataset_id, state: parseInt(item.dataset_status.Uploading), version: item.dataset_version_id, size: formatSize(item.local_dataset_size.toString()), path: item.local_dataset_path, createDate: moment(parseInt(item.create_timestamp) * 1000).format('YYYY-MM-DD-HH:mm:ss') })
                     }
                 })
-                taskData.forEach((item: { id: string; state: string | Object; version: string; size: string | Number,path:string,createDate:string }) => {
+                taskData.forEach((item: { id: string; state: string | Object; version: string; size: string | Number, path: string, createDate: string }) => {
                     infoData.forEach(Item => {
                         if (item.id === Item.id && item.version === Item.version) {
                             item.state = Item.state
                             item.size = Item.size
-                            item.path=Item.path
-                            item.createDate=Item.createDate
+                            item.path = Item.path
+                            item.createDate = Item.createDate
                         }
                     })
                 })

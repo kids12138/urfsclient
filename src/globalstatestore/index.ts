@@ -9,7 +9,7 @@ export default createStore({
     dataType: "persional",
     dataPage:"list",
     dataSetId:"",
-    dataSetVersion:"default",
+    dataSetVersion:"",
     dataSetNumber:true
   },
   getters: {
