@@ -2,7 +2,7 @@
     <a-table :columns="columns" :data-source="taskList" :pagination="false" :loading=show>
         <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'id'">
-                <span style="width:180px!important">{{ record.name ? record.name : "已删除" }}</span>
+                <span style="width:180px!important">{{ record.name }}</span>
             </template>
             <template v-if="column.key === 'version'">
                 <span>

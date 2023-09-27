@@ -128,6 +128,7 @@ async function get_history() {
     let res: any = await invoke("get_history", { req: JSON.stringify({ req: "{}" }) });
     let Data = JSON.parse(res)
     Data = JSON.parse(Data["payload_json"])
+    console.log(Data)
     if (Data.length !== 0) {
       data.length = 0
       Data.forEach((item: { dataset_id: string, local_dataset_path: string, create_timestamp: string, dataset_status: any, dataset_version_id: string, local_dataset_size: string }) => {
@@ -170,6 +171,7 @@ const getTaskList = (data: any) => {
       if (res && res.data && res.data["status_msg"] && res.data["status_msg"] == "succeed") {
         item.name = res.data.dataset.name
       }
+      else { item.name == "已删除" }
       if (dataseVersion) {
         const res2: any = await http.fetch(config.baseURL + '/api/v1/dataset/' + datasetId + "/version/" + dataseVersion, {
           method: 'GET',
@@ -188,7 +190,10 @@ const getTaskList = (data: any) => {
   })
   allTaskData.length = 0
   data.forEach((item: any) => {
-    allTaskData.push(item)
+    if (item.version !== "已删除" && item.name !== "已删除") {
+      allTaskData.push(item)
+    }
+
   })
   open3.value = true;
 };
