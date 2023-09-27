@@ -4,9 +4,9 @@
             <template v-if="column.key === 'id'">
                 <span style="width:180px!important">{{ record.name }}</span>
             </template>
-            <template v-if="column.key === 'version'">
+            <template v-if="column.key === 'versionName'">
                 <span>
-                    {{ record.version }}
+                    {{ record.versionName }}
                 </span>
             </template>
             <template v-if="column.key === 'size'">
@@ -88,7 +88,7 @@ const props = defineProps({
     TaskData: {
         type: Array,
         default: []
-    }
+    },
 });
 const columns = [
     {
@@ -101,8 +101,8 @@ const columns = [
     },
     {
         title: "版本",
-        dataIndex: "version",
-        key: "version",
+        dataIndex: "versionName",
+        key: "versionName",
         width: "120px",
         align: "center",
         resizable: false,
@@ -163,7 +163,8 @@ interface taskType {
     size: string | Number,
     path: string,
     createDate: string,
-    version: string
+    version: string,
+    versionName: string
 
 }
 // const data: dataType[] = reactive([]);
@@ -236,59 +237,61 @@ async function stop_upload(record: dataType) {
 }
 async function terminate_uploading(record: dataType) {
     if (allow.value === true) {
-    try {
-        allow.value =false;
-        const res: any = await invoke("terminate_upload", {
-            req: JSON.stringify({
-                dataset_id: record.id,
-                dataset_version_id: record.version,
-            }),
-        });
-        let Data = JSON.parse(res)
-        if (Data.status_code == 0) {
-            message.success("删除任务成功");
+        try {
+            allow.value = false;
+            const res: any = await invoke("terminate_upload", {
+                req: JSON.stringify({
+                    dataset_id: record.id,
+                    dataset_version_id: record.version,
+                }),
+            });
+            let Data = JSON.parse(res)
+            if (Data.status_code == 0) {
+                message.success("删除任务成功");
+                allow.value = true
+                clearTimeout(timer.value)
+                timer.value = ""
+                updateState()
+                timer.value = setInterval(updateState, 2000);
+            } else {
+                message.warning(res)
+            }
+        } catch (err: any) {
+            message.error("删除任务出错：", err);
             allow.value = true
-            clearTimeout(timer.value)
-            timer.value = ""
-            updateState()
-            timer.value = setInterval(updateState, 2000);
-        } else {
-            message.warning(res)
+            // error(`终止上传出错: ${err}`);
         }
-    } catch (err: any) {
-        message.error("删除任务出错：", err);
-        allow.value = true
-        // error(`终止上传出错: ${err}`);
-    }}else{
+    } else {
         message.warning("请求发送中")
     }
 }
 async function terminate_upload(record: dataType) {
     if (allow.value === true) {
-    try {
-        allow.value=false
-        const res: any = await invoke("delete_history_task", {
-            req: JSON.stringify({
-                dataset_id: record.id,
-                dataset_version_id: record.version,
-            }),
-        });
-        let Data = JSON.parse(res)
-        if (Data.status_code == 0) {
-            message.success("删除任务成功");
-            allow.value=true
-            clearTimeout(timer.value)
-            timer.value = ""
-            updateState()
-            timer.value = setInterval(updateState, 2000);
-        } else {
-            message.warning(res)
+        try {
+            allow.value = false
+            const res: any = await invoke("delete_history_task", {
+                req: JSON.stringify({
+                    dataset_id: record.id,
+                    dataset_version_id: record.version,
+                }),
+            });
+            let Data = JSON.parse(res)
+            if (Data.status_code == 0) {
+                message.success("删除任务成功");
+                allow.value = true
+                clearTimeout(timer.value)
+                timer.value = ""
+                updateState()
+                timer.value = setInterval(updateState, 2000);
+            } else {
+                message.warning(res)
+            }
+        } catch (err: any) {
+            message.error("删除出错：", err);
+            allow.value = true
+            // error(`暂停上传出错: ${err}`);
         }
-    } catch (err: any) {
-        message.error("删除出错：", err);
-        allow.value = true
-        // error(`暂停上传出错: ${err}`);
-    }}else{
+    } else {
         message.warning("请求发送中")
     }
 }

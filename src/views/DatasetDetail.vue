@@ -46,7 +46,7 @@
     <operateDialg v-if="open2" @closeDatasetDialg="closeDatasetDialg" title="编辑数据集" />
     <a-modal v-model:open="open3" title="上传数据集" @ok="hideModal" :centered="true"
       :ok-button-props="{ style: { display: 'none' } }" :cancel-button-props="{ style: { display: 'none' } }">
-      <upload @close="hideModal"></upload>
+      <upload @close="hideModal" v-if="open3"></upload>
     </a-modal>
     <a-modal v-model:open="open4" title="创建版本" @ok="confirm">
       <a-form ref="formRef" :model="versionState" :rules="rules">
