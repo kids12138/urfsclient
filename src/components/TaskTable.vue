@@ -34,17 +34,17 @@
                 </span>
             </template>
             <template v-else-if="column.key === 'operate'">
-                <span class="m-l" v-if="props.state == 'Uploading'">
+                <span class="m-l" v-if="props.state == 'Uploading'&&(record.name!=='已删除'&&record.versionName!=='已删除')">
                     <a @click="stop_upload(record)">暂停</a>
                 </span>
                 <span @click="terminate_upload(record)" class="m-l"
-                    v-if="props.state !== 'Uploading' && props.state !== 'Init' && props.state !== 'AsyncProcessing'">
+                    v-if="props.state !== 'Uploading' && props.state !== 'Init' && props.state !== 'AsyncProcessing'&&(record.name!=='已删除'&&record.versionName!=='已删除')">
                     <a>删除</a>
                 </span>
-                <span @click="terminate_uploading(record)" class="m-l" v-if="props.state === 'Uploading'">
+                <span @click="terminate_uploading(record)" class="m-l" v-if="props.state === 'Uploading'&&(record.name!=='已删除'&&record.versionName!=='已删除')">
                     <a>删除</a>
                 </span>
-                <span @click="restart_upload(record)" class="m-l" v-if="props.state === 'Stop' || props.state === 'Failed'">
+                <span @click="restart_upload(record)" class="m-l" v-if="props.state === 'Stop' || props.state === 'Failed'&&(record.name!=='已删除'&&record.versionName!=='已删除')">
                     <a>继续上传</a>
                 </span>
             </template>
@@ -217,6 +217,7 @@ async function stop_upload(record: dataType) {
                     dataset_version_id: record.version,
                 }),
             });
+            alert(record.id+"-----------"+record.version)
             let Data = JSON.parse(res)
             if (Data.status_code == 0) {
                 message.success("暂停任务成功");
