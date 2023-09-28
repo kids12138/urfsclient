@@ -217,7 +217,6 @@ async function stop_upload(record: dataType) {
                     dataset_version_id: record.version,
                 }),
             });
-            alert(record.id+"-----------"+record.version)
             let Data = JSON.parse(res)
             if (Data.status_code == 0) {
                 message.success("暂停任务成功");
