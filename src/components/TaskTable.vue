@@ -44,7 +44,7 @@
                 <span @click="terminate_uploading(record)" class="m-l" v-if="props.state === 'Uploading'&&(record.name!=='已删除'&&record.versionName!=='已删除')">
                     <a>删除</a>
                 </span>
-                <span @click="restart_upload(record)" class="m-l" v-if="props.state === 'Stop' || props.state === 'Failed'&&(record.name!=='已删除'&&record.versionName!=='已删除')">
+                <span @click="restart_upload(record)" class="m-l" v-if="props.state === 'Stop' || props.state === 'Failed'&&(record.name!=='已删除'||record.versionName!=='已删除')">
                     <a>继续上传</a>
                 </span>
             </template>
