@@ -1,5 +1,5 @@
 const config={
-    baseURL :'http://192.168.23.32:65004',
+    baseURL :'http://192.168.23.218:65004',
     timeout :5000,
     
 }

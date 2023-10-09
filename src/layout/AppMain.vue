@@ -127,6 +127,7 @@ async function get_history() {
     info("[ui] click get_history btn");
     let res: any = await invoke("get_history", { req: JSON.stringify({ req: "{}" }) });
     let Data = JSON.parse(res)
+   if(Data.status_code==0&&Data["payload_json"]){
     Data = JSON.parse(Data["payload_json"])
     if (Data.length !== 0) {
       data.length = 0
@@ -142,16 +143,22 @@ async function get_history() {
       allTaskData.length = 0
       open3.value = true;
     }
+   }else{
+     allTaskData.length = 0
+      open3.value = true;
+   }
+    
   } catch (err: any) {
     message.error("获取文件上传历史错误：", err);
     console.log(err, "err")
   }
 }
-const getTaskList = (data: any) => {
+const getTaskList = async (data: any) => {
   if (!data) {
     data = []
   }
-  data.forEach(async (item: {
+ await Promise.all(
+  data.map(async (item: {
     id: string,
     name: string,
     size: string | Number,
@@ -186,11 +193,11 @@ const getTaskList = (data: any) => {
 
       }
 
-
     } catch (err: any) {
       message.error("err", err);
     }
   })
+ )
   allTaskData.length = 0
   data.forEach((item: any) => {
     allTaskData.push(item)
