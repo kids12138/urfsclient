@@ -133,10 +133,11 @@ async function get_history() {
       data.length = 0
       Data.forEach((item: { dataset_id: string, local_dataset_path: string, create_timestamp: string, dataset_status: any, dataset_version_id: string, local_dataset_size: string }) => {
         if (typeof item.dataset_status === "string") {
-          data.push({ id: item.dataset_id, state: item.dataset_status, size: formatSize(item.local_dataset_size.toString()), path: item.local_dataset_path, createDate: moment(parseInt(item.create_timestamp) * 1000).format('YYYY-MM-DD-HH:mm:ss'), version: item.dataset_version_id })
+          data.push({ id: item.dataset_id, state: item.dataset_status, size: formatSize(item.local_dataset_size.toString()), path: item.local_dataset_path, createDate: moment(parseInt(item.create_timestamp) * 1000).format('YYYY-MM-DD-HH:mm:ss'), version: item.dataset_version_id })     
         } else {
           data.push({ id: item.dataset_id, state: parseInt(item.dataset_status.Uploading), size: formatSize(item.local_dataset_size.toString()), path: item.local_dataset_path, createDate: moment(parseInt(item.create_timestamp) * 1000).format('YYYY-MM-DD-HH:mm:ss'), version: item.dataset_version_id })
         }
+       
       })
       getTaskList(data)
     } else {
@@ -178,7 +179,6 @@ const getTaskList = async (data: any) => {
       if (res && res.data && res.data["status_msg"] && res.data["status_msg"] == "succeed" && res.data.dataset.name !== "") {
         item.name = res.data.dataset.name
 
-
       } else { item.name = "已删除" }
       if (dataseVersion == "") { item.versionName = "已删除" }
       else {
@@ -186,13 +186,12 @@ const getTaskList = async (data: any) => {
           method: 'GET',
           timeout: config.timeout
         })
-
         if (res2.status === 422) {
+          console.log(res2)
           item.versionName = "已删除"
         } else { item.versionName = item.version }
 
       }
-
     } catch (err: any) {
       message.error("err", err);
     }
