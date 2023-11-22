@@ -26,7 +26,6 @@ import {getLabel} from "../util/index"
 import { message } from "ant-design-vue";
 import config from "../util/config"
 import { http } from "@tauri-apps/api";
-import { T } from "@tauri-apps/api/event-41a9edf5";
 const store = useStore();
 const show = ref<boolean>(false);
 onMounted(() => {
